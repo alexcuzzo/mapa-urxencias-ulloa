@@ -128,12 +128,28 @@
 
   if (map) {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "top-right");
-    map.addControl(new maplibregl.GeolocateControl({
+    const geoloc = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
       showAccuracyCircle: true,
-    }), "top-right");
+    });
+    map.addControl(geoloc, "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+    // referencia para ordenar por cercanía: el GPS manda; si no, el centro del mapa
+    let hayGps = false;
+    geoloc.on("geolocate", function (e) {
+      hayGps = true;
+      window.Buscador.setReferencia(e.coords.latitude, e.coords.longitude);
+    });
+    geoloc.on("trackuserlocationend", function () { hayGps = false; });
+    map.on("moveend", function () {
+      if (hayGps) return;
+      const c = map.getCenter();
+      window.Buscador.setReferencia(c.lat, c.lng);
+    });
+    const c0 = map.getCenter();
+    window.Buscador.setReferencia(c0.lat, c0.lng);
 
     // clave inválida (403) o estilo que nunca carga → caer a OSM con aviso
     let estiloCaido = false;
@@ -344,6 +360,8 @@
   }
 
   // ---------- popups ----------
+  function esc(s) { return window.Buscador.escapar(s); }
+
   function botones(lat, lon) {
     return '<div class="pop-botones">' +
       '<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + lat + "," + lon + '">🧭 Google Maps</a>' +
@@ -441,7 +459,7 @@
     const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
     const html = "<h3>Nº " + p.n + "</h3><div>" + p.via + "</div>" +
       (p.cp ? "<div>CP " + p.cp + "</div>" : "") +
-      (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      (p.nota ? '<div class="aviso">📝 ' + esc(p.nota) + "</div>" : "") +
       fotoHTML(p) +
       (p.orig ? '<div class="mini">Posición corregida por el equipo</div>' : "") +
       '<div class="mini">Fuente: Catastro · ' + lat + ", " + lon + "</div>" +
@@ -454,8 +472,8 @@
     const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
     const html = "<h3>" + (p.n ? "Nº " + p.n : "Casa") +
       ' <small>(añadida por el equipo)</small></h3>' +
-      (p.lugar ? "<div>" + p.lugar + "</div>" : "") +
-      (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      (p.lugar ? "<div>" + esc(p.lugar) + "</div>" : "") +
+      (p.nota ? '<div class="aviso">📝 ' + esc(p.nota) + "</div>" : "") +
       fotoHTML(p) +
       '<div class="mini">' + lat + ", " + lon + "</div>" +
       botones(lat, lon) + Editor.botonesCasa(p);
@@ -571,26 +589,51 @@
   const caja = document.getElementById("resultados");
   let resultadosActuales = [], marcado = -1;
 
+  function textoDistancia(d) {
+    if (d == null) return "";
+    return ' · <b>a ' + (d < 1 ? Math.round(d * 1000) + " m"
+      : d.toFixed(d < 10 ? 1 : 0).replace(".", ",") + " km") + "</b>";
+  }
+
   function pintarResultados(r) {
+    const B = window.Buscador;
+    const q = r.consulta ? r.consulta.texto : "";
     resultadosActuales = r.resultados;
     marcado = -1;
     if (!r.resultados.length) {
-      caja.innerHTML = input.value.trim() ? '<div class="res vacio">Sin resultados. Prueba sin artículo (O/A) o solo el inicio del nombre.</div>' : "";
+      caja.innerHTML = input.value.trim() ? '<div class="res vacio">Sin resultados. Prueba con menos letras, sin artículo (O/A) o solo el nombre del lugar.</div>' : "";
       caja.hidden = !input.value.trim();
       return;
     }
-    caja.innerHTML = r.resultados.map(function (x, i) {
+    const aviso = r.ignoradoCtx
+      ? '<div class="res vacio">No encontré esa parroquia o concello: muestro por nombre de lugar.</div>' : "";
+    caja.innerHTML = aviso + r.resultados.map(function (x, i) {
       const p = x.item.f.properties;
+      const dist = textoDistancia(x.d);
       if (x.item.tipo === "sanidad") {
-        return '<div class="res" data-i="' + i + '"><b>🏥 ' + p.n + "</b><br><small>" + p.dir + "</small></div>";
+        return '<div class="res" data-i="' + i + '"><b>🏥 ' + B.resaltar(p.n, q) +
+          "</b><br><small>" + B.escapar(p.dir) + dist + "</small></div>";
+      }
+      if (x.item.tipo === "parroquia") {
+        return '<div class="res" data-i="' + i + '"><b>⛪ Parroquia de ' + B.resaltar(p.n, q) +
+          "</b>" + (p.ext == 1 ? ' <span class="tag">veciño</span>' : "") +
+          '<br><small>' + B.escapar(p.c) + " · " + p.nlugares + " lugares" + dist + "</small></div>";
+      }
+      if (x.item.tipo === "casa") {
+        return '<div class="res" data-i="' + i + '"><b>🏠 ' +
+          (p.n ? "Nº " + B.escapar(p.n) + " · " : "") + B.resaltar(p.lugar || "", q) +
+          '</b> <span class="tag">equipo</span><br><small>' +
+          (p.nota ? "📝 " + B.escapar(p.nota) : "casa añadida por el equipo") + dist + "</small></div>";
       }
       const extra = p.f === "osm-extra" ? ' <span class="tag">no oficial</span>' : "";
       const dup = p.dup == 1 ? ' <span class="tag warn">⚠ repetido</span>' : "";
       const vecino = p.ext == 1 ? ' <span class="tag">veciño</span>' : "";
       const portais = p.np > 0 ? " · " + p.np + " portales" : "";
-      return '<div class="res" data-i="' + i + '"><b>' + p.n + "</b>" + dup + vecino + extra +
-        "<br><small>" + (p.p ? p.p + (p.adv ? " (" + p.adv + ")" : "") + " · " : "") + p.c +
-        (p.cp ? " · CP " + p.cp + (p.cpx ? "~" : "") : "") + portais + "</small></div>";
+      return '<div class="res" data-i="' + i + '"><b>' + B.resaltar(p.n, q) + "</b>" +
+        dup + vecino + extra + "<br><small>" +
+        (p.p ? B.escapar(p.p) + (p.adv ? " (" + B.escapar(p.adv) + ")" : "") + " · " : "") +
+        B.escapar(p.c) + (p.cp ? " · CP " + p.cp + (p.cpx ? "~" : "") : "") + portais +
+        dist + "</small></div>";
     }).join("");
     caja.hidden = false;
   }
@@ -600,13 +643,28 @@
     if (!r) return;
     caja.hidden = true;
     const c = window.Buscador.parseConsulta(input.value);
+    const f = r.item.f, p = f.properties;
     if (r.item.tipo === "sanidad") {
       limpiarSeleccion();
-      const f = r.item.f;
       if (map) map.flyTo({ center: f.geometry.coordinates, zoom: 16 });
-      popupSanidad(f.properties, f.geometry.coordinates);
+      popupSanidad(p, f.geometry.coordinates);
+    } else if (r.item.tipo === "parroquia") {
+      limpiarSeleccion();
+      if (p.ext == 1 && !seleccionVecinos.has(p.m)) ponerVecino(p.m, true);
+      if (map) {
+        const b = f.bbox;
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]],
+          { padding: 70, maxZoom: 14.5, duration: 800 });
+      }
+      mostrarDestino("Parroquia de " + p.n + " (" + p.c + ")",
+        f.geometry.coordinates[1].toFixed(5), f.geometry.coordinates[0].toFixed(5));
+    } else if (r.item.tipo === "casa") {
+      limpiarSeleccion();
+      filtrarSeguro("casa-obxectivo", ["==", ["get", "id"], p.id]);
+      if (map) map.flyTo({ center: f.geometry.coordinates, zoom: 17 });
+      popupCasa(p, f.geometry.coordinates);
     } else {
-      seleccionarEntidad(r.item.f, c.num);
+      seleccionarEntidad(f, c.num);
     }
   }
 
@@ -730,6 +788,7 @@
   // ---------- edición colaborativa ----------
   function refrescarEdiciones() {
     window.Edicion.aplicarAPortales(PORTALES);
+    window.Buscador.reindexar(); // las casas y notas del equipo también se buscan
     if (map) {
       const sp = map.getSource("portales");
       if (sp) sp.setData(PORTALES);

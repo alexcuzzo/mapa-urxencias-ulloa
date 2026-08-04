@@ -34,6 +34,8 @@
   .res:hover, .res.marcado { background: #dbeafe; }
   .res.vacio { color: #64748b; cursor: default; font-size: 14px; }
   .res small { font-size: 13px; color: #475569; }
+  .res mark { background: #fde68a; color: inherit; border-radius: 3px; padding: 0 1px; }
+  body.oscuro .res mark { background: #92400e; color: #fef3c7; }
   .tag { background: #e2e8f0; color: #475569; border-radius: 6px; padding: 1px 6px; font-size: 12px; }
   .tag.warn { background: #fef3c7; color: #92400e; }
 
@@ -237,9 +239,16 @@
     Escribe el <b>lugar</b> tal como llega en el aviso; opcionalmente añade el
     <b>número de casa</b>, y tras una coma la <b>parroquia</b> o el <b>concello</b>,
     o el <b>CP</b>. Ejemplos:<br>
-    <i>outeiro, san xoán</i> · <i>vilanova 7</i> · <i>ligonde 27568</i><br>
-    Los nombres repetidos en varias parroquias se marcan con ⚠ — comprueba
-    siempre la parroquia. Un CP con ~ es aproximado (estimado por parroquia).
+    <i>outeiro, san xoán</i> · <i>vilanova 7</i> · <i>ligonde 27568</i><br><br>
+    El buscador entiende también:<br>
+    · el nombre <b>en castellano</b> (<i>puente, otero, villanueva, iglesia</i>);<br>
+    · <b>erratas</b> de dictado (<i>curbian, seijas, airexe</i>);<br>
+    · palabras <b>en cualquier orden</b> (<i>donas vilar</i>);<br>
+    · <b>parroquias</b> ⛪ (te encuadra todos sus lugares) y las <b>notas</b> 🏠
+      que escribe el equipo (<i>portalón verde</i>).<br><br>
+    Los resultados se ordenan por parecido y <b>cercanía a tu posición</b> (o al
+    centro del mapa), con la distancia a la vista. Los nombres repetidos se
+    marcan con ⚠ — comprueba siempre la parroquia. Un CP con ~ es aproximado.
   </div>
 
   <h2>Fuentes y aviso</h2>
