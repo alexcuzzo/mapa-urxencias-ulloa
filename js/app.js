@@ -275,6 +275,19 @@
       .setLngLat(lngLat).setHTML(html).addTo(map);
   }
 
+  // Barra fija inferior: navegar al último punto seleccionado con un toque
+  function mostrarDestino(nombre, lat, lon) {
+    document.getElementById("bd-nombre").textContent = nombre;
+    document.getElementById("bd-gmaps").href =
+      "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
+    document.getElementById("bd-waze").href =
+      "https://waze.com/ul?ll=" + lat + "," + lon + "&navigate=yes";
+    document.getElementById("barra-destino").hidden = false;
+  }
+  document.getElementById("bd-cerrar").addEventListener("click", function () {
+    document.getElementById("barra-destino").hidden = true;
+  });
+
   function popupEntidad(p, coords, aviso) {
     const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
     let html = "<h3>" + p.n + (p.f === "osm-extra" ? ' <small>(nombre OSM, no oficial)</small>' : "") + "</h3>";
@@ -292,6 +305,7 @@
     html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon) +
       Editor.botonEntidad(p);
     abrirPopup(coords, html);
+    mostrarDestino(p.n + (p.p ? " (" + p.p + ")" : ""), lat, lon);
   }
 
   function popupPortal(p, coords) {
@@ -303,6 +317,7 @@
       '<div class="mini">Fuente: Catastro · ' + lat + ", " + lon + "</div>" +
       botones(lat, lon) + Editor.botonesPortal(p);
     abrirPopup(coords, html);
+    mostrarDestino("Nº " + p.n + " · " + p.via, lat, lon);
   }
 
   function popupCasa(p, coords) {
@@ -314,6 +329,7 @@
       '<div class="mini">' + lat + ", " + lon + "</div>" +
       botones(lat, lon) + Editor.botonesCasa(p);
     abrirPopup(coords, html);
+    mostrarDestino((p.n ? "Nº " + p.n : "Casa") + (p.lugar ? " · " + p.lugar : ""), lat, lon);
   }
 
   function popupSanidad(p, coords) {
@@ -326,6 +342,7 @@
     if (p.nota) html += '<div class="mini">' + p.nota + "</div>";
     html += botones(lat, lon);
     abrirPopup(coords, html);
+    mostrarDestino(p.n, lat, lon);
   }
 
   // ---------- selección desde el buscador ----------

@@ -56,9 +56,16 @@ function doPost(e) {
     return salida_({ ok: false, error: "PIN incorrecto" });
   }
   const h = hoja_();
-  const filas = (body.edits || []).map(function (ed) {
-    return COLS.map(function (c) { return ed[c] !== undefined ? ed[c] : ""; });
+  // dedup por id: un lote reenviado (respuesta perdida, reintento) no duplica
+  const existentes = {};
+  h.getRange(1, 1, h.getLastRow(), 1).getValues().forEach(function (f) {
+    if (f[0]) existentes[String(f[0])] = true;
   });
+  const filas = (body.edits || [])
+    .filter(function (ed) { return ed.id && !existentes[String(ed.id)]; })
+    .map(function (ed) {
+      return COLS.map(function (c) { return ed[c] !== undefined ? ed[c] : ""; });
+    });
   if (filas.length) {
     h.getRange(h.getLastRow() + 1, 1, filas.length, COLS.length).setValues(filas);
   }
