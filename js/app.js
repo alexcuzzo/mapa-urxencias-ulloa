@@ -33,9 +33,10 @@
   const portalesEstado = {};
   MUNIS_NUCLEO.concat(MUNIS_EXT).forEach(function (m) { portalesEstado[m] = "pendiente"; });
 
-  function cargarLote(lista) {
-    return Promise.all(lista.map(function (m) {
-      return new Promise(function (resolver) {
+  const portalPromesas = {};
+  function cargarMuni(m) {
+    if (!portalPromesas[m]) {
+      portalPromesas[m] = new Promise(function (resolver) {
         const s = document.createElement("script");
         s.src = "data/portales-" + m + ".js";
         s.onload = function () {
@@ -53,38 +54,53 @@
         };
         s.onerror = function () { portalesEstado[m] = "fallo"; resolver(); };
         document.head.appendChild(s);
-      });
-    }));
-  }
-
-  const portalesListos = cargarLote(MUNIS_NUCLEO);
-  let extPromesa = null;
-  function cargarPortalesExt() {
-    if (!extPromesa) {
-      extPromesa = cargarLote(MUNIS_EXT).then(function () {
-        refrescarEdiciones();
-      });
+      }).then(function () { refrescarEdiciones(); });
     }
-    return extPromesa;
+    return portalPromesas[m];
   }
-  function portalesDe(m) {
-    return MUNIS_NUCLEO.indexOf(m) >= 0 ? portalesListos : cargarPortalesExt();
-  }
+  const portalesListos = Promise.all(MUNIS_NUCLEO.map(cargarMuni));
+  function portalesDe(m) { return cargarMuni(m); }
 
-  // ---------- concellos veciños: mostrar u ocultar ----------
-  let verVecinos = localStorage.getItem("ulloa-vecinos") === "1";
-  function aplicarVecinos() {
-    const filtro = verVecinos ? null : ["!=", ["get", "ext"], 1];
-    ["entidades-circulo", "entidades-etiqueta", "limites-linea"].forEach(function (capa) {
-      filtrarSeguro(capa, filtro);
-    });
-    const cb = document.getElementById("chk-vecinos");
-    if (cb) cb.checked = verVecinos;
+  // ---------- concellos veciños: selección individual ----------
+  const VECINOS_NOMES = {
+    "15046": "Melide", "15079": "Santiso", "15083": "Toques",
+    "27020": "Friol", "27023": "Guntín", "27049": "Portomarín", "27060": "Taboada",
+    "36020": "Agolada", "36047": "Rodeiro",
+  };
+  const seleccionVecinos = (function () {
+    try {
+      const guardada = JSON.parse(localStorage.getItem("ulloa-vecinos-sel"));
+      if (Array.isArray(guardada)) {
+        return new Set(guardada.filter(function (m) { return VECINOS_NOMES[m]; }));
+      }
+    } catch (e) {}
+    // migración del interruptor antiguo todo/nada
+    return localStorage.getItem("ulloa-vecinos") === "1" ? new Set(MUNIS_EXT) : new Set();
+  })();
+  function guardarSeleccion() {
+    try {
+      localStorage.setItem("ulloa-vecinos-sel", JSON.stringify(Array.from(seleccionVecinos)));
+    } catch (e) {}
   }
-  function ponerVecinos(v) {
-    verVecinos = v;
-    try { localStorage.setItem("ulloa-vecinos", v ? "1" : "0"); } catch (e) {}
-    if (v) cargarPortalesExt();
+  function aplicarVecinos() {
+    const dentro = ["in", ["get", "m"],
+      ["literal", MUNIS_NUCLEO.concat(Array.from(seleccionVecinos))]];
+    ["entidades-circulo", "entidades-etiqueta", "limites-linea"].forEach(function (capa) {
+      filtrarSeguro(capa, dentro);
+    });
+    filtrarSeguro("portales-circulo", ["all", ["!=", ["get", "del"], 1], dentro]);
+    filtrarSeguro("portales-etiqueta", ["all", ["!=", ["get", "del"], 1], dentro]);
+    Object.keys(VECINOS_NOMES).forEach(function (m) {
+      const cb = document.getElementById("chk-v-" + m);
+      if (cb) cb.checked = seleccionVecinos.has(m);
+    });
+    const todos = document.getElementById("chk-vecinos-todos");
+    if (todos) todos.checked = seleccionVecinos.size === MUNIS_EXT.length;
+  }
+  function ponerVecino(m, activo) {
+    if (activo) { seleccionVecinos.add(m); cargarMuni(m); }
+    else seleccionVecinos.delete(m);
+    guardarSeleccion();
     aplicarVecinos();
   }
 
@@ -473,7 +489,7 @@
 
   function seleccionarEntidad(f, num) {
     const p = f.properties, coords = f.geometry.coordinates;
-    if (p.ext == 1 && !verVecinos) ponerVecinos(true); // que se vea lo que eliges
+    if (p.ext == 1 && !seleccionVecinos.has(p.m)) ponerVecino(p.m, true); // que se vea lo elegido
     // si el estilo aún no cargó, reaplicar cuando existan las capas
     if (map && !map.getLayer("portales-via")) {
       map.once("load", function () { seleccionarEntidad(f, num); });
@@ -664,9 +680,33 @@
       alternarPanel(false);
     }
   });
-  const chkVecinos = document.getElementById("chk-vecinos");
-  chkVecinos.checked = verVecinos;
-  chkVecinos.addEventListener("change", function () { ponerVecinos(chkVecinos.checked); });
+  // casillas de concellos veciños (una por concello + "Todos")
+  (function () {
+    const cont = document.getElementById("lista-vecinos");
+    const ordenados = MUNIS_EXT.slice().sort(function (a, b) {
+      return VECINOS_NOMES[a].localeCompare(VECINOS_NOMES[b]);
+    });
+    ordenados.forEach(function (m) {
+      const lab = document.createElement("label");
+      lab.className = "conmutador";
+      lab.innerHTML = '<input type="checkbox" id="chk-v-' + m + '"><span>' +
+        VECINOS_NOMES[m] + "</span>";
+      lab.querySelector("input").addEventListener("change", function (e) {
+        ponerVecino(m, e.target.checked);
+      });
+      cont.appendChild(lab);
+    });
+    const todos = document.getElementById("chk-vecinos-todos");
+    todos.addEventListener("change", function () {
+      MUNIS_EXT.forEach(function (m) {
+        if (todos.checked) { seleccionVecinos.add(m); cargarMuni(m); }
+        else seleccionVecinos.delete(m);
+      });
+      guardarSeleccion();
+      aplicarVecinos();
+    });
+    aplicarVecinos(); // estado inicial de las casillas
+  })();
 
   const listaSan = document.getElementById("lista-sanidad");
   window.SANIDAD.features.forEach(function (f) {

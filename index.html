@@ -131,6 +131,8 @@
     box-shadow: 0 1px 4px rgba(0,0,0,.1); touch-action: manipulation;
   }
   .conmutador input { width: 22px; height: 22px; flex-shrink: 0; }
+  .lista-vecinos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .lista-vecinos .conmutador { padding: 10px; font-size: 13.5px; }
   body.oscuro .conmutador { background: #1e293b; color: #e2e8f0; }
   .san-pac { border-left-color: #dc2626; }
   .san-hospital { border-left-color: #7c3aed; }
@@ -223,10 +225,12 @@
 
   <h2>🏘 Concellos veciños</h2>
   <label class="conmutador">
-    <input type="checkbox" id="chk-vecinos">
-    <span>Mostrar Friol, Guntín, Portomarín, Taboada, Melide, Santiso, Toques, Agolada y Rodeiro</span>
+    <input type="checkbox" id="chk-vecinos-todos">
+    <span><b>Todos</b></span>
   </label>
-  <div class="mini">El buscador los encuentra siempre (etiqueta "veciño"), estén visibles o no.</div>
+  <div id="lista-vecinos" class="lista-vecinos"></div>
+  <div class="mini">Marca los que quieras ver en el mapa. El buscador los encuentra
+    siempre (etiqueta "veciño") y, al elegir un resultado, activa su concello solo.</div>
 
   <h2>Cómo buscar</h2>
   <div class="mini">
