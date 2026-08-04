@@ -43,6 +43,25 @@ de ningún CDN, útil con la cobertura intermitente de la zona. Para usar la
 geolocalización y el portapapeles desde el móvil, sírvela por HTTPS
 (GitHub Pages / Netlify).
 
+## Edición colaborativa (añadir/corregir casas)
+
+Botón **✏️**: activa el modo edición (pide el PIN del equipo una vez por
+dispositivo). Con él activo:
+- **Tocar el mapa** donde esté una casa → formulario (número, lugar, nota).
+- **Tocar un portal o casa** → mover posición, añadir nota ("portalón verde"),
+  o marcar como inexistente.
+- Desde la ficha de una aldea: "➕ Añadir casa en este lugar".
+
+Las ediciones se guardan al instante en el dispositivo (funciona sin
+cobertura) y se sincronizan con una hoja de Google cuando hay señal; todos
+los dispositivos ven lo mismo. Las casas del equipo salen en **verde** y el
+buscador las encuentra igual que las del Catastro.
+
+**Activar el servidor compartido (una vez, 5 min)**: sigue las instrucciones
+de `herramientas/apps-script-edicion.gs` (Apps Script + PIN) y pega la URL
+`/exec` en `config.js` → `EDITS_URL`. Sin configurar, las ediciones quedan
+solo en cada dispositivo.
+
 ## Reproducir el pipeline de datos
 
 Scripts en `herramientas/` (Python 3 + `pyproj`):

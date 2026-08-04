@@ -143,12 +143,10 @@
     });
 
     map.addSource("portales", { type: "geojson", data: PORTALES });
-    portalesListos.then(function () {
-      const src = map.getSource("portales");
-      if (src) src.setData(PORTALES);
-    });
+    portalesListos.then(refrescarEdiciones);
     map.addLayer({
       id: "portales-circulo", type: "circle", source: "portales", minzoom: 14,
+      filter: ["!=", ["get", "del"], 1],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 2.5, 17, 5],
         "circle-color": "#d97706", "circle-stroke-width": 1, "circle-stroke-color": "#fff",
@@ -164,6 +162,7 @@
     });
     map.addLayer({
       id: "portales-etiqueta", type: "symbol", source: "portales", minzoom: 15,
+      filter: ["!=", ["get", "del"], 1],
       layout: {
         "text-field": ["get", "n"], "text-font": fuente, "text-size": 11,
         "text-offset": [0, 0.9], "text-anchor": "top",
@@ -176,6 +175,32 @@
       paint: {
         "circle-radius": 11, "circle-color": "rgba(220,38,38,0.25)",
         "circle-stroke-width": 3, "circle-stroke-color": "#dc2626",
+      },
+    });
+
+    // Casas añadidas/corregidas por el equipo (verde)
+    map.addSource("casas", { type: "geojson", data: window.Edicion.fcCasas() });
+    map.addLayer({
+      id: "casas-circulo", type: "circle", source: "casas", minzoom: 12,
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 17, 7],
+        "circle-color": "#16a34a", "circle-stroke-width": 1.5, "circle-stroke-color": "#fff",
+      },
+    });
+    map.addLayer({
+      id: "casas-etiqueta", type: "symbol", source: "casas", minzoom: 14,
+      layout: {
+        "text-field": ["get", "n"], "text-font": fuente, "text-size": 11.5,
+        "text-offset": [0, 0.9], "text-anchor": "top",
+      },
+      paint: { "text-color": "#166534", "text-halo-color": "#fff", "text-halo-width": 1.4 },
+    });
+    map.addLayer({
+      id: "casa-obxectivo", type: "circle", source: "casas", minzoom: 10,
+      filter: ["==", ["get", "id"], "__ninguna__"],
+      paint: {
+        "circle-radius": 11, "circle-color": "rgba(22,163,74,0.25)",
+        "circle-stroke-width": 3, "circle-stroke-color": "#16a34a",
       },
     });
 
@@ -203,20 +228,23 @@
     });
 
     // un solo handler de click con caja de tolerancia táctil (±12 px)
-    const CAPAS_CLICK = ["portal-obxectivo", "portales-via", "portales-circulo",
-      "sanidad-circulo", "entidades-circulo"];
+    const CAPAS_CLICK = ["portal-obxectivo", "casa-obxectivo", "casas-circulo",
+      "portales-via", "portales-circulo", "sanidad-circulo", "entidades-circulo"];
     map.on("click", function (e) {
+      if (Editor.interceptarClick(e)) return; // modos mover / colocar casa
       const r = 12;
       const caja = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
       const capas = CAPAS_CLICK.filter(function (c) { return map.getLayer(c); });
       const feats = map.queryRenderedFeatures(caja, { layers: capas });
-      if (!feats.length) return;
+      if (!feats.length) { Editor.clickVacio(e); return; }
       feats.sort(function (a, b) {
         return CAPAS_CLICK.indexOf(a.layer.id) - CAPAS_CLICK.indexOf(b.layer.id);
       });
       const f = feats[0];
       const coords = f.geometry.coordinates;
-      if (f.layer.id.indexOf("portales") === 0 || f.layer.id === "portal-obxectivo") {
+      if (f.layer.id.indexOf("casa") === 0) {
+        popupCasa(f.properties, coords);
+      } else if (f.layer.id.indexOf("portales") === 0 || f.layer.id === "portal-obxectivo") {
         popupPortal(f.properties, coords);
       } else if (f.layer.id === "sanidad-circulo") {
         popupSanidad(f.properties, coords);
@@ -261,7 +289,8 @@
     } else {
       html += '<div class="mini">Sin portales numerados en Catastro para este lugar.</div>';
     }
-    html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon);
+    html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon) +
+      Editor.botonEntidad(p);
     abrirPopup(coords, html);
   }
 
@@ -269,7 +298,21 @@
     const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
     const html = "<h3>Nº " + p.n + "</h3><div>" + p.via + "</div>" +
       (p.cp ? "<div>CP " + p.cp + "</div>" : "") +
-      '<div class="mini">Fuente: Catastro · ' + lat + ", " + lon + "</div>" + botones(lat, lon);
+      (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      (p.orig ? '<div class="mini">Posición corregida por el equipo</div>' : "") +
+      '<div class="mini">Fuente: Catastro · ' + lat + ", " + lon + "</div>" +
+      botones(lat, lon) + Editor.botonesPortal(p);
+    abrirPopup(coords, html);
+  }
+
+  function popupCasa(p, coords) {
+    const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
+    const html = "<h3>" + (p.n ? "Nº " + p.n : "Casa") +
+      ' <small>(añadida por el equipo)</small></h3>' +
+      (p.lugar ? "<div>" + p.lugar + "</div>" : "") +
+      (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      '<div class="mini">' + lat + ", " + lon + "</div>" +
+      botones(lat, lon) + Editor.botonesCasa(p);
     abrirPopup(coords, html);
   }
 
@@ -292,6 +335,7 @@
   function limpiarSeleccion() {
     filtrarSeguro("portales-via", ["==", ["get", "cv"], "__ninguna__"]);
     filtrarSeguro("portal-obxectivo", ["==", ["get", "cv"], "__ninguna__"]);
+    filtrarSeguro("casa-obxectivo", ["==", ["get", "id"], "__ninguna__"]);
   }
   function normNum(n) { return (n || "").toUpperCase().replace(/[^0-9A-Z]/g, ""); }
 
@@ -303,18 +347,39 @@
     }
     limpiarSeleccion();
     if (p.cv) {
-      filtrarSeguro("portales-via", ["all", ["==", ["get", "m"], p.m], ["==", ["get", "cv"], p.cv]]);
+      filtrarSeguro("portales-via", ["all", ["==", ["get", "m"], p.m],
+        ["==", ["get", "cv"], p.cv], ["!=", ["get", "del"], 1]]);
     }
 
-    if (num && p.cv) {
+    if (num) {
       portalesListos.then(function () {
+        // 1º: casas añadidas por el equipo (por vía o por nombre del lugar)
+        const nl = window.Buscador.norm(p.n);
+        const casa = Array.from(window.Edicion.efectivas().altas.values()).find(function (c) {
+          const mismoSitio = c.m === p.m &&
+            ((p.cv && c.cv === p.cv) || window.Buscador.norm(c.lugar) === nl);
+          return mismoSitio && normNum(c.numero) === normNum(num);
+        });
+        if (casa) {
+          filtrarSeguro("casa-obxectivo", ["==", ["get", "id"], casa.id]);
+          if (map) map.flyTo({ center: [casa.lon, casa.lat], zoom: 17 });
+          popupCasa({ id: casa.id, n: casa.numero, lugar: casa.lugar || p.n, nota: casa.nota },
+            [casa.lon, casa.lat]);
+          return;
+        }
+        // 2º: portales del Catastro
+        if (!p.cv) {
+          if (map) map.flyTo({ center: coords, zoom: 15 });
+          popupEntidad(p, coords, "El nº " + num + " no figura para este lugar; se muestra la aldea. Puedes añadir la casa con el modo edición ✏️.");
+          return;
+        }
         if (portalesEstado[p.m] !== "ok") {
           if (map) map.flyTo({ center: coords, zoom: 16 });
           popupEntidad(p, coords, "No se pudieron cargar los portales de este concello (sin conexión): se muestra la aldea.");
           return;
         }
         const objetivo = PORTALES.features.filter(function (pf) {
-          return pf.properties.m === p.m && pf.properties.cv === p.cv;
+          return pf.properties.m === p.m && pf.properties.cv === p.cv && pf.properties.del !== 1;
         });
         let hit = objetivo.find(function (pf) { return normNum(pf.properties.n) === normNum(num); });
         if (!hit) hit = objetivo.find(function (pf) { return normNum(pf.properties.n).replace(/[A-Z]+$/, "") === normNum(num); });
@@ -325,7 +390,7 @@
           popupPortal(hit.properties, hit.geometry.coordinates);
         } else {
           if (map) map.flyTo({ center: coords, zoom: 16 });
-          popupEntidad(p, coords, "El nº " + num + " no figura en el Catastro de este lugar; se muestra la aldea y sus portales.");
+          popupEntidad(p, coords, "El nº " + num + " no figura en el Catastro de este lugar; se muestra la aldea y sus portales. Puedes añadirlo con el modo edición ✏️.");
         }
       });
     } else {
@@ -458,5 +523,192 @@
     listaSan.appendChild(div);
   });
 
-  window.AppUlloa = { copiar: copiar, verVia: verVia, map: map };
+  // ---------- edición colaborativa ----------
+  function refrescarEdiciones() {
+    window.Edicion.aplicarAPortales(PORTALES);
+    if (map) {
+      const sp = map.getSource("portales");
+      if (sp) sp.setData(PORTALES);
+      const sc = map.getSource("casas");
+      if (sc) sc.setData(window.Edicion.fcCasas());
+    }
+  }
+  window.Edicion.alCambio(refrescarEdiciones);
+  window.Edicion.refrescarRemoto();
+  window.Edicion.avisar();
+  window.Edicion.alPinIncorrecto = function () {
+    window.alert("PIN incorrecto: se te pedirá de nuevo al usar el modo edición.");
+  };
+
+  const Editor = (function () {
+    let activo = false;
+    let moviendo = null;   // objetivo (portal o casa) esperando nueva posición
+    let preset = null;     // alta prefijada desde el popup de una aldea
+    const btn = document.getElementById("btn-editar");
+    const bannerModo = document.getElementById("banner-modo");
+    const form = document.getElementById("form-casa");
+    const fNumero = document.getElementById("f-numero");
+    const fLugar = document.getElementById("f-lugar");
+    const fNota = document.getElementById("f-nota");
+    const fTitulo = document.getElementById("f-titulo");
+    let formCtx = null;
+
+    const dl = document.getElementById("lista-lugares");
+    window.ENTIDADES.features.forEach(function (f) {
+      const o = document.createElement("option");
+      o.value = f.properties.n + (f.properties.p ? " (" + f.properties.p + ")" : "");
+      dl.appendChild(o);
+    });
+
+    function mensaje(txt) {
+      bannerModo.textContent = txt || "";
+      bannerModo.hidden = !txt;
+    }
+
+    function alternar() {
+      if (!activo && window.Edicion.conServidor && !window.Edicion.hayPin()) {
+        const pin = window.prompt("PIN de edición del equipo:");
+        if (!pin) return;
+        window.Edicion.ponPin(pin.trim());
+        window.Edicion.sincronizar();
+      }
+      activo = !activo;
+      btn.classList.toggle("activo", activo);
+      moviendo = null;
+      preset = null;
+      mensaje(activo ? "✏️ Modo edición: toca el mapa donde esté la casa para añadirla, o toca un punto existente para corregirlo" : "");
+      if (!activo) { form.hidden = true; formCtx = null; }
+    }
+    btn.addEventListener("click", alternar);
+
+    function entidadCercana(lngLat) {
+      let mejor = null, mejorD = 1.2; // km
+      window.ENTIDADES.features.forEach(function (f) {
+        const c = f.geometry.coordinates;
+        const d = Math.hypot((c[1] - lngLat.lat) * 111,
+          (c[0] - lngLat.lng) * 111 * Math.cos(lngLat.lat * Math.PI / 180));
+        if (d < mejorD) { mejorD = d; mejor = f.properties; }
+      });
+      return mejor;
+    }
+
+    function abrirForm(lngLat, pre, editando) {
+      const cerca = pre || entidadCercana(lngLat) || {};
+      formCtx = {
+        lon: +(+lngLat.lng).toFixed(6), lat: +(+lngLat.lat).toFixed(6),
+        m: cerca.m || "", cv: cerca.cv || "",
+        editandoId: editando ? editando.id : null,
+      };
+      fTitulo.textContent = editando ? "Editar casa" : "Añadir casa";
+      fNumero.value = editando ? (editando.n || "") : "";
+      fLugar.value = editando ? (editando.lugar || "") : (cerca.n || "");
+      fNota.value = editando ? (editando.nota || "") : "";
+      form.hidden = false;
+      fNumero.focus();
+    }
+
+    document.getElementById("f-guardar").addEventListener("click", function () {
+      if (!formCtx) return;
+      const lugar = fLugar.value.replace(/\s*\(.*\)$/, "").trim();
+      if (formCtx.editandoId) {
+        window.Edicion.registrar({
+          accion: "editar", objetivo: formCtx.editandoId,
+          numero: fNumero.value.trim().toUpperCase(), nota: fNota.value.trim(),
+        });
+      } else {
+        window.Edicion.registrar({
+          accion: "alta", m: formCtx.m, cv: formCtx.cv, lugar: lugar,
+          numero: fNumero.value.trim().toUpperCase(), nota: fNota.value.trim(),
+          lon: formCtx.lon, lat: formCtx.lat,
+        });
+      }
+      form.hidden = true;
+      formCtx = null;
+      mensaje("✏️ Guardado. Sigues en modo edición.");
+    });
+    document.getElementById("f-cancelar").addEventListener("click", function () {
+      form.hidden = true;
+      formCtx = null;
+    });
+
+    return {
+      interceptarClick: function (e) {
+        if (moviendo) {
+          window.Edicion.registrar({
+            accion: "mover", objetivo: moviendo,
+            lon: +e.lngLat.lng.toFixed(6), lat: +e.lngLat.lat.toFixed(6),
+          });
+          moviendo = null;
+          mensaje("✏️ Posición corregida.");
+          return true;
+        }
+        if (preset) {
+          abrirForm(e.lngLat, preset, null);
+          preset = null;
+          mensaje("");
+          return true;
+        }
+        return false;
+      },
+      clickVacio: function (e) {
+        if (activo && form.hidden) abrirForm(e.lngLat, null, null);
+      },
+      botonesPortal: function (p) {
+        if (!activo) return "";
+        const k = p.m + "|" + p.cv + "|" + p.n;
+        return '<div class="pop-botones">' +
+          '<button class="btn verde" onclick="AppUlloa.edMover(\'' + k + '\')">📍 Mover</button>' +
+          '<button class="btn verde" onclick="AppUlloa.edNota(\'' + k + '\')">📝 Nota</button>' +
+          '<button class="btn rojo" onclick="AppUlloa.edBaja(\'' + k + '\')">🗑 No existe</button></div>';
+      },
+      botonesCasa: function (p) {
+        if (!activo) return "";
+        return '<div class="pop-botones">' +
+          '<button class="btn verde" onclick="AppUlloa.edMover(\'' + p.id + '\')">📍 Mover</button>' +
+          '<button class="btn verde" onclick="AppUlloa.edEditar(\'' + p.id + '\')">✏️ Editar</button>' +
+          '<button class="btn rojo" onclick="AppUlloa.edBaja(\'' + p.id + '\')">🗑 Borrar</button></div>';
+      },
+      botonEntidad: function (p) {
+        if (!activo) return "";
+        return '<div class="pop-botones">' +
+          '<button class="btn verde" onclick="AppUlloa.edAltaEn(\'' + p.m + "','" + (p.cv || "") + "','" +
+          String(p.n).replace(/'/g, "") + '\')">➕ Añadir casa en este lugar</button></div>';
+      },
+      mover: function (objetivo) {
+        moviendo = objetivo;
+        if (popup) popup.remove();
+        mensaje("📍 Toca el mapa en la posición correcta");
+      },
+      nota: function (objetivo) {
+        const n = window.prompt("Nota (referencia, cómo llegar, nombre de la casa):");
+        if (n === null) return;
+        window.Edicion.registrar({ accion: "nota", objetivo: objetivo, nota: n.trim() });
+        if (popup) popup.remove();
+      },
+      baja: function (objetivo) {
+        if (!window.confirm("¿Marcar como inexistente / borrar?")) return;
+        window.Edicion.registrar({ accion: "baja", objetivo: objetivo });
+        if (popup) popup.remove();
+      },
+      editar: function (id) {
+        const c = window.Edicion.efectivas().altas.get(id);
+        if (!c) return;
+        if (popup) popup.remove();
+        abrirForm({ lng: c.lon, lat: c.lat }, { m: c.m, cv: c.cv, n: c.lugar },
+          { id: id, n: c.numero, lugar: c.lugar, nota: c.nota });
+      },
+      altaEn: function (m, cv, lugar) {
+        if (!activo) alternar();
+        preset = { m: m, cv: cv, n: lugar };
+        if (popup) popup.remove();
+        mensaje("➕ Toca el mapa en la posición exacta de la casa (" + lugar + ")");
+      },
+    };
+  })();
+
+  window.AppUlloa = {
+    copiar: copiar, verVia: verVia, map: map,
+    edMover: Editor.mover, edNota: Editor.nota, edBaja: Editor.baja,
+    edEditar: Editor.editar, edAltaEn: Editor.altaEn,
+  };
 })();
