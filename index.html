@@ -50,6 +50,27 @@
     touch-action: manipulation;
   }
   #btn-editar.activo { background: #16a34a; color: #fff; }
+  #btn-vista {
+    position: fixed; top: 120px; left: 8px; z-index: 30;
+    width: 48px; height: 48px; font-size: 20px; border: none; border-radius: 10px;
+    background: #fff; color: #1e293b; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    touch-action: manipulation;
+  }
+
+  /* modo nocturno de la interfaz (vista 🌙) */
+  body.oscuro #busqueda { background: #1e293b; color: #f1f5f9; border-color: #64748b; }
+  body.oscuro #busqueda::placeholder { color: #94a3b8; }
+  body.oscuro #resultados, body.oscuro #form-casa { background: #1e293b; color: #f1f5f9; }
+  body.oscuro .res { border-color: #334155; }
+  body.oscuro .res:hover, body.oscuro .res.marcado { background: #1d4ed8; }
+  body.oscuro .res small, body.oscuro .mini, body.oscuro #form-casa label { color: #cbd5e1; }
+  body.oscuro #panel { background: #0f172a; color: #e2e8f0; }
+  body.oscuro #panel h2 { color: #e2e8f0; }
+  body.oscuro .san-item { background: #1e293b; color: #e2e8f0; }
+  body.oscuro #form-casa input { background: #0f172a; color: #f1f5f9; border-color: #475569; }
+  body.oscuro #btn-vista, body.oscuro #btn-editar:not(.activo) { background: #1e293b; color: #f1f5f9; }
+  body.oscuro .maplibregl-popup-content { background: #1e293b; color: #f1f5f9; }
+  body.oscuro .maplibregl-popup-tip { border-top-color: #1e293b; }
   #banner-modo {
     position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); z-index: 35;
     background: #166534; color: #fff; padding: 10px 16px; border-radius: 10px;
@@ -122,6 +143,7 @@
   .maplibregl-popup-content h3 { font-size: 18px; margin-bottom: 4px; padding-right: 34px; }
   .maplibregl-popup-close-button { width: 40px; height: 40px; font-size: 24px; line-height: 1; }
   .aviso { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 8px; margin-top: 6px; font-size: 14px; }
+  .pop-foto { max-width: 100%; max-height: 150px; border-radius: 8px; margin-top: 6px; display: block; }
   .pop-botones { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .btn {
     display: inline-flex; align-items: center; min-height: 44px;
@@ -145,6 +167,7 @@
 
 <button id="btn-panel" aria-label="Información y recursos sanitarios" aria-expanded="false">☰</button>
 <button id="btn-editar" aria-label="Modo edición: añadir o corregir casas">✏️</button>
+<button id="btn-vista" hidden aria-label="Cambiar vista de mapa">🗺</button>
 
 <div id="banner-modo" hidden></div>
 <div id="banner-sync" hidden></div>
@@ -153,17 +176,22 @@
   <span id="bd-nombre"></span>
   <a id="bd-gmaps" class="btn" target="_blank" rel="noopener">🧭 Navegar</a>
   <a id="bd-waze" class="btn" target="_blank" rel="noopener">🚗 Waze</a>
+  <button id="bd-compartir" class="btn" aria-label="Compartir destino">📤</button>
   <button id="bd-cerrar" class="btn" aria-label="Cerrar barra de destino">✕</button>
 </div>
 
 <div id="form-casa" hidden>
   <h3 id="f-titulo">Añadir casa</h3>
-  <label>Número de casa (o vacío si no tiene)
+  <label id="l-numero">Número de casa (o vacío si no tiene)
     <input id="f-numero" type="text" autocomplete="off" inputmode="numeric" placeholder="12, 7A…"></label>
-  <label>Lugar / aldea
+  <label id="l-lugar">Lugar / aldea
     <input id="f-lugar" type="text" autocomplete="off" list="lista-lugares"></label>
   <label>Nota (referencia, nombre de la casa, acceso…)
     <input id="f-nota" type="text" autocomplete="off" placeholder="portalón verde, entrar por la pista…"></label>
+  <label>Foto (opcional, p. ej. la fachada)
+    <input id="f-foto" type="file" accept="image/*" capture="environment"></label>
+  <img id="f-foto-prev" hidden alt="previsualización"
+       style="max-width:100%; max-height:120px; border-radius:8px; margin-top:6px;">
   <div class="botones">
     <button class="btn verde" id="f-guardar">💾 Guardar</button>
     <button class="btn" id="f-cancelar">Cancelar</button>

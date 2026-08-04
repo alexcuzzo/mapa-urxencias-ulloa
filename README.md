@@ -18,6 +18,12 @@ con el formato: *lugar + nº de casa + parroquia + concello + CP*.
    - Botones de cada ficha: navegación en Google Maps / Waze y copiar coordenadas.
 4. Botón ☰: recursos sanitarios (PAC Palas 24h, centros de salud, HULA),
    leyenda y ayuda. Botón de geolocalización arriba a la derecha.
+5. Al seleccionar cualquier punto: **barra inferior** con 🧭 Navegar (Google
+   Maps), 🚗 Waze y 📤 Compartir (envía un enlace que abre este mapa clavado
+   en el punto). El buscador vacío muestra los **últimos destinos**.
+6. Botón 🗺/🛰/🌙: alterna vista día / **satélite** (para identificar la casa
+   por el tejado) / **nocturna** (conducción de noche).
+7. La app también se puede abrir con el aviso en la URL: `?q=vilanova 12`.
 
 Para usarlo en el móvil: sube la carpeta tal cual a cualquier hosting
 estático (Netlify Drop, GitHub Pages…) — no necesita servidor dinámico.
@@ -47,9 +53,12 @@ geolocalización y el portapapeles desde el móvil, sírvela por HTTPS
 
 Botón **✏️**: activa el modo edición (pide el PIN del equipo una vez por
 dispositivo). Con él activo:
-- **Tocar el mapa** donde esté una casa → formulario (número, lugar, nota).
-- **Tocar un portal o casa** → mover posición, añadir nota ("portalón verde"),
-  o marcar como inexistente.
+- **Tocar el mapa** donde esté una casa → formulario (número, lugar, nota
+  y **foto opcional** de la fachada — se comprime en el móvil y se guarda en
+  la carpeta "mapa-ulloa-fotos" de Drive).
+- **Tocar un portal o casa** → mover posición, añadir nota con foto
+  ("portalón verde"), o marcar como inexistente. Guardar una nota vacía
+  borra la nota y la foto.
 - Desde la ficha de una aldea: "➕ Añadir casa en este lugar".
 
 Las ediciones se guardan al instante en el dispositivo (funciona sin

@@ -104,10 +104,37 @@
       }, 5000);
     }
 
-    map.on("load", montarCapas);
+    // style.load se dispara con cada estilo (inicial, satélite, nocturno,
+    // fallback): las capas propias se remontan siempre encima.
+    map.on("style.load", montarCapas);
+    map.once("load", enlazarInteraccion);
+  }
+
+  // ---------- vistas: día / satélite / noche ----------
+  const VISTAS = {
+    dia: { icono: "🗺", nombre: "día", estilo: "outdoor-v2" },
+    sat: { icono: "🛰", nombre: "satélite", estilo: "hybrid" },
+    noche: { icono: "🌙", nombre: "noche", estilo: "streets-v2-dark" },
+  };
+  const ORDEN_VISTAS = ["dia", "sat", "noche"];
+  let vistaActual = "dia";
+  const btnVista = document.getElementById("btn-vista");
+  if (conClave && map) {
+    btnVista.hidden = false;
+    btnVista.textContent = VISTAS.dia.icono;
+    btnVista.addEventListener("click", function () {
+      vistaActual = ORDEN_VISTAS[(ORDEN_VISTAS.indexOf(vistaActual) + 1) % ORDEN_VISTAS.length];
+      const v = VISTAS[vistaActual];
+      btnVista.textContent = v.icono;
+      btnVista.setAttribute("aria-label", "Vista: " + v.nombre);
+      document.body.classList.toggle("oscuro", vistaActual === "noche");
+      map.setStyle("https://api.maptiler.com/maps/" + v.estilo + "/style.json?key=" +
+        encodeURIComponent(window.MAPTILER_KEY));
+    });
   }
 
   function montarCapas() {
+    if (map.getSource("entidades")) return; // ya montadas para este estilo
     const fuente = usandoFuenteFallback ? ["Open Sans Semibold"] : FUENTE;
 
     map.addSource("limites", { type: "geojson", data: window.LIMITES });
@@ -227,9 +254,12 @@
       paint: { "text-color": "#7f1d1d", "text-halo-color": "#fff", "text-halo-width": 1.6 },
     });
 
-    // un solo handler de click con caja de tolerancia táctil (±12 px)
-    const CAPAS_CLICK = ["portal-obxectivo", "casa-obxectivo", "casas-circulo",
-      "portales-via", "portales-circulo", "sanidad-circulo", "entidades-circulo"];
+  }
+
+  // un solo handler de click con caja de tolerancia táctil (±12 px)
+  const CAPAS_CLICK = ["portal-obxectivo", "casa-obxectivo", "casas-circulo",
+    "portales-via", "portales-circulo", "sanidad-circulo", "entidades-circulo"];
+  function enlazarInteraccion() {
     map.on("click", function (e) {
       if (Editor.interceptarClick(e)) return; // modos mover / colocar casa
       const r = 12;
@@ -276,17 +306,61 @@
   }
 
   // Barra fija inferior: navegar al último punto seleccionado con un toque
+  let ultimoDestino = null;
   function mostrarDestino(nombre, lat, lon) {
+    ultimoDestino = { t: nombre, lat: lat, lon: lon };
     document.getElementById("bd-nombre").textContent = nombre;
     document.getElementById("bd-gmaps").href =
       "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
     document.getElementById("bd-waze").href =
       "https://waze.com/ul?ll=" + lat + "," + lon + "&navigate=yes";
     document.getElementById("barra-destino").hidden = false;
+    guardarReciente(ultimoDestino);
   }
   document.getElementById("bd-cerrar").addEventListener("click", function () {
     document.getElementById("barra-destino").hidden = true;
   });
+
+  // Compartir el destino (enlace que abre esta app centrada en el punto)
+  document.getElementById("bd-compartir").addEventListener("click", function () {
+    if (!ultimoDestino) return;
+    const url = location.origin + location.pathname + "?lat=" + ultimoDestino.lat +
+      "&lon=" + ultimoDestino.lon + "&t=" + encodeURIComponent(ultimoDestino.t);
+    const texto = "🚑 " + ultimoDestino.t + " — " + ultimoDestino.lat + ", " + ultimoDestino.lon;
+    const boton = document.getElementById("bd-compartir");
+    if (navigator.share) {
+      navigator.share({ title: "Destino urxencias A Ulloa", text: texto, url: url })
+        .catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto + "\n" + url).then(function () {
+        boton.textContent = "✓";
+        setTimeout(function () { boton.textContent = "📤"; }, 1500);
+      }, function () { window.prompt("Copia el enlace:", url); });
+    } else {
+      window.prompt("Copia el enlace:", url);
+    }
+  });
+
+  // Historial de últimos destinos
+  function recientes() {
+    try { return JSON.parse(localStorage.getItem("ulloa-recientes")) || []; }
+    catch (e) { return []; }
+  }
+  function guardarReciente(d) {
+    const r = recientes().filter(function (x) { return x.t !== d.t; });
+    r.unshift({ t: d.t, lat: d.lat, lon: d.lon, ts: Date.now() });
+    try { localStorage.setItem("ulloa-recientes", JSON.stringify(r.slice(0, 8))); } catch (e) {}
+  }
+
+  // Foto en popup: miniatura de Drive (sincronizada) o local (pendiente)
+  function fotoHTML(p) {
+    const src = p.foto
+      ? "https://drive.google.com/thumbnail?id=" + p.foto + "&sz=w500"
+      : (p.fotoLocal ? "data:image/jpeg;base64," + p.fotoLocal : null);
+    if (!src) return "";
+    const full = p.foto ? "https://drive.google.com/file/d/" + p.foto + "/view" : src;
+    return '<a href="' + full + '" target="_blank" rel="noopener"><img class="pop-foto" src="' + src + '" alt="foto"></a>';
+  }
 
   function popupEntidad(p, coords, aviso) {
     const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
@@ -313,6 +387,7 @@
     const html = "<h3>Nº " + p.n + "</h3><div>" + p.via + "</div>" +
       (p.cp ? "<div>CP " + p.cp + "</div>" : "") +
       (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      fotoHTML(p) +
       (p.orig ? '<div class="mini">Posición corregida por el equipo</div>' : "") +
       '<div class="mini">Fuente: Catastro · ' + lat + ", " + lon + "</div>" +
       botones(lat, lon) + Editor.botonesPortal(p);
@@ -326,6 +401,7 @@
       ' <small>(añadida por el equipo)</small></h3>' +
       (p.lugar ? "<div>" + p.lugar + "</div>" : "") +
       (p.nota ? '<div class="aviso">📝 ' + p.nota + "</div>" : "") +
+      fotoHTML(p) +
       '<div class="mini">' + lat + ", " + lon + "</div>" +
       botones(lat, lon) + Editor.botonesCasa(p);
     abrirPopup(coords, html);
@@ -477,8 +553,24 @@
     }
   }
 
+  function pintarRecientes() {
+    const r = recientes();
+    if (!r.length) { caja.hidden = true; return; }
+    resultadosActuales = [];
+    marcado = -1;
+    caja.innerHTML = '<div class="res vacio">Últimos destinos</div>' +
+      r.map(function (x, i) {
+        return '<div class="res" data-r="' + i + '">🕐 <b>' + x.t + "</b></div>";
+      }).join("");
+    caja.hidden = false;
+  }
+
   input.addEventListener("input", function () {
+    if (!input.value.trim()) { pintarRecientes(); return; }
     pintarResultados(window.Buscador.buscar(input.value));
+  });
+  input.addEventListener("focus", function () {
+    if (!input.value.trim()) pintarRecientes();
   });
   input.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
@@ -498,7 +590,17 @@
   });
   caja.addEventListener("click", function (e) {
     const el = e.target.closest(".res");
-    if (el && el.dataset.i !== undefined) elegir(+el.dataset.i);
+    if (!el) return;
+    if (el.dataset.r !== undefined) {
+      const x = recientes()[+el.dataset.r];
+      caja.hidden = true;
+      if (x) {
+        if (map) map.flyTo({ center: [+x.lon, +x.lat], zoom: 16 });
+        mostrarDestino(x.t, x.lat, x.lon);
+      }
+      return;
+    }
+    if (el.dataset.i !== undefined) elegir(+el.dataset.i);
   });
   document.addEventListener("click", function (e) {
     if (!e.target.closest("#cabecera")) caja.hidden = true;
@@ -609,13 +711,52 @@
       return mejor;
     }
 
+    const fFoto = document.getElementById("f-foto");
+    const fFotoPrev = document.getElementById("f-foto-prev");
+    fFoto.addEventListener("change", function () {
+      const archivo = fFoto.files && fFoto.files[0];
+      if (!archivo) {
+        if (formCtx) formCtx.imagenB64 = null;
+        fFotoPrev.hidden = true;
+        return;
+      }
+      const lector = new FileReader();
+      lector.onload = function () {
+        const img = new Image();
+        img.onload = function () {
+          // comprimir a máx 1280 px / JPEG 0.72 para que quepa en la cola offline
+          const MAX = 1280;
+          const esc = Math.min(1, MAX / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * esc);
+          c.height = Math.round(img.height * esc);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          const dataUrl = c.toDataURL("image/jpeg", 0.72);
+          if (formCtx) formCtx.imagenB64 = dataUrl.split(",")[1];
+          fFotoPrev.src = dataUrl;
+          fFotoPrev.hidden = false;
+        };
+        img.src = lector.result;
+      };
+      lector.readAsDataURL(archivo);
+    });
+
+    function prepararForm(modo) {
+      fFoto.value = "";
+      fFotoPrev.hidden = true;
+      document.getElementById("l-numero").style.display = modo === "nota" ? "none" : "";
+      document.getElementById("l-lugar").style.display = modo === "nota" ? "none" : "";
+    }
+
     function abrirForm(lngLat, pre, editando) {
       const cerca = pre || entidadCercana(lngLat) || {};
       formCtx = {
         lon: +(+lngLat.lng).toFixed(6), lat: +(+lngLat.lat).toFixed(6),
         m: cerca.m || "", cv: cerca.cv || "",
         editandoId: editando ? editando.id : null,
+        imagenB64: null,
       };
+      prepararForm("casa");
       fTitulo.textContent = editando ? "Editar casa" : "Añadir casa";
       fNumero.value = editando ? (editando.n || "") : "";
       fLugar.value = editando ? (editando.lugar || "") : (cerca.n || "");
@@ -624,19 +765,35 @@
       fNumero.focus();
     }
 
+    function abrirFormNota(objetivo) {
+      formCtx = { modo: "nota", objetivo: objetivo, imagenB64: null };
+      prepararForm("nota");
+      fTitulo.textContent = "Nota y foto";
+      fNota.value = "";
+      form.hidden = false;
+      fNota.focus();
+    }
+
     document.getElementById("f-guardar").addEventListener("click", function () {
       if (!formCtx) return;
-      const lugar = fLugar.value.replace(/\s*\(.*\)$/, "").trim();
-      if (formCtx.editandoId) {
+      if (formCtx.modo === "nota") {
+        window.Edicion.registrar({
+          accion: "nota", objetivo: formCtx.objetivo,
+          nota: fNota.value.trim(), imagenB64: formCtx.imagenB64 || undefined,
+        });
+      } else if (formCtx.editandoId) {
         window.Edicion.registrar({
           accion: "editar", objetivo: formCtx.editandoId,
           numero: fNumero.value.trim().toUpperCase(), nota: fNota.value.trim(),
+          imagenB64: formCtx.imagenB64 || undefined,
         });
       } else {
         window.Edicion.registrar({
-          accion: "alta", m: formCtx.m, cv: formCtx.cv, lugar: lugar,
+          accion: "alta", m: formCtx.m, cv: formCtx.cv,
+          lugar: fLugar.value.replace(/\s*\(.*\)$/, "").trim(),
           numero: fNumero.value.trim().toUpperCase(), nota: fNota.value.trim(),
           lon: formCtx.lon, lat: formCtx.lat,
+          imagenB64: formCtx.imagenB64 || undefined,
         });
       }
       form.hidden = true;
@@ -697,10 +854,8 @@
         mensaje("📍 Toca el mapa en la posición correcta");
       },
       nota: function (objetivo) {
-        const n = window.prompt("Nota (referencia, cómo llegar, nombre de la casa):");
-        if (n === null) return;
-        window.Edicion.registrar({ accion: "nota", objetivo: objetivo, nota: n.trim() });
         if (popup) popup.remove();
+        abrirFormNota(objetivo);
       },
       baja: function (objetivo) {
         if (!window.confirm("¿Marcar como inexistente / borrar?")) return;
@@ -721,6 +876,31 @@
         mensaje("➕ Toca el mapa en la posición exacta de la casa (" + lugar + ")");
       },
     };
+  })();
+
+  // ---------- enlaces profundos: ?q=lestedo 14 · ?lat&lon&t (compartidos) ----------
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q");
+    const lat = parseFloat(params.get("lat"));
+    const lon = parseFloat(params.get("lon"));
+    if (q) {
+      input.value = q;
+      portalesListos.then(function () {
+        setTimeout(function () {
+          const r = window.Buscador.buscar(q);
+          pintarResultados(r);
+          if (r.resultados.length) elegir(0);
+        }, 500);
+      });
+    } else if (isFinite(lat) && isFinite(lon)) {
+      const t = params.get("t") || lat.toFixed(5) + ", " + lon.toFixed(5);
+      if (map) {
+        map.jumpTo({ center: [lon, lat], zoom: 16.5 });
+        new maplibregl.Marker({ color: "#dc2626" }).setLngLat([lon, lat]).addTo(map);
+      }
+      mostrarDestino(t, lat.toFixed(6), lon.toFixed(6));
+    }
   })();
 
   window.AppUlloa = {

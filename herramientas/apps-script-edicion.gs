@@ -15,7 +15,7 @@
  */
 const PIN = "CAMBIAME";
 
-const COLS = ["id", "ts", "accion", "m", "cv", "lugar", "numero", "nota", "lon", "lat", "objetivo"];
+const COLS = ["id", "ts", "accion", "m", "cv", "lugar", "numero", "nota", "lon", "lat", "objetivo", "foto"];
 
 function hoja_() {
   const props = PropertiesService.getScriptProperties();
@@ -32,7 +32,32 @@ function hoja_() {
   }
   let h = ss.getSheetByName("casas");
   if (!h) { h = ss.insertSheet("casas"); h.appendRow(COLS); }
+  if (h.getLastColumn() < COLS.length) {
+    h.getRange(1, 1, 1, COLS.length).setValues([COLS]); // ampliar cabecera (foto)
+  }
   return h;
+}
+
+function carpeta_() {
+  const props = PropertiesService.getScriptProperties();
+  let id = props.getProperty("FOTOS_ID");
+  let f = null;
+  if (id) {
+    try { f = DriveApp.getFolderById(id); } catch (e) { f = null; }
+  }
+  if (!f) {
+    f = DriveApp.createFolder("mapa-ulloa-fotos");
+    props.setProperty("FOTOS_ID", f.getId());
+  }
+  return f;
+}
+
+function guardarFoto_(ed) {
+  const blob = Utilities.newBlob(Utilities.base64Decode(ed.imagenB64), "image/jpeg",
+    (ed.id || "foto") + ".jpg");
+  const file = carpeta_().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
 }
 
 function doGet() {
@@ -61,18 +86,31 @@ function doPost(e) {
   h.getRange(1, 1, h.getLastRow(), 1).getValues().forEach(function (f) {
     if (f[0]) existentes[String(f[0])] = true;
   });
-  const filas = (body.edits || [])
-    .filter(function (ed) { return ed.id && !existentes[String(ed.id)]; })
-    .map(function (ed) {
-      return COLS.map(function (c) { return ed[c] !== undefined ? ed[c] : ""; });
-    });
+  const nuevos = (body.edits || [])
+    .filter(function (ed) { return ed.id && !existentes[String(ed.id)]; });
+  nuevos.forEach(function (ed) {
+    if (ed.imagenB64) {
+      try { ed.foto = guardarFoto_(ed); } catch (e) { ed.foto = ""; }
+      delete ed.imagenB64;
+    }
+  });
+  const filas = nuevos.map(function (ed) {
+    return COLS.map(function (c) { return ed[c] !== undefined ? ed[c] : ""; });
+  });
   if (filas.length) {
     h.getRange(h.getLastRow() + 1, 1, filas.length, COLS.length).setValues(filas);
   }
-  return salida_({ ok: true, guardados: filas.length });
+  // devolver el lote procesado (con id de foto en Drive, sin base64)
+  return salida_({ ok: true, guardados: filas.length, edits: nuevos });
 }
 
 function salida_(o) {
   return ContentService.createTextOutput(JSON.stringify(o))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/** Ejecutar una vez desde el editor para autorizar permisos y crear la hoja. */
+function autorizar() {
+  const h = hoja_();
+  Logger.log("OK: " + h.getParent().getUrl());
 }

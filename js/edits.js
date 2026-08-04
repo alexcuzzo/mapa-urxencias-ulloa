@@ -29,21 +29,32 @@
             id: ed.id, m: String(ed.m || ""), cv: String(ed.cv || ""),
             lugar: ed.lugar || "", numero: String(ed.numero || ""),
             nota: ed.nota || "", lon: +ed.lon, lat: +ed.lat,
+            foto: ed.foto || null, fotoLocal: ed.imagenB64 || null,
           });
         } else if (ed.objetivo && altas.has(ed.objetivo)) {
           const c = altas.get(ed.objetivo);
           if (ed.accion === "baja") altas.delete(ed.objetivo);
           else if (ed.accion === "mover") { c.lon = +ed.lon; c.lat = +ed.lat; }
-          else if (ed.accion === "nota") c.nota = ed.nota || "";
-          else if (ed.accion === "editar") {
+          else if (ed.accion === "nota") {
+            c.nota = ed.nota || "";
+            if (ed.foto) { c.foto = ed.foto; c.fotoLocal = null; }
+            else if (ed.imagenB64) c.fotoLocal = ed.imagenB64;
+            else if (!c.nota) { c.foto = null; c.fotoLocal = null; } // nota vacía limpia todo
+          } else if (ed.accion === "editar") {
             if (ed.numero !== undefined && ed.numero !== "") c.numero = String(ed.numero);
             if (ed.nota !== undefined) c.nota = ed.nota || "";
+            if (ed.foto) { c.foto = ed.foto; c.fotoLocal = null; }
+            else if (ed.imagenB64) c.fotoLocal = ed.imagenB64;
           }
         } else if (ed.objetivo) {
           const c = cambios.get(ed.objetivo) || {};
           if (ed.accion === "mover") { c.lon = +ed.lon; c.lat = +ed.lat; }
-          else if (ed.accion === "nota") c.nota = ed.nota || "";
-          else if (ed.accion === "baja") c.del = 1;
+          else if (ed.accion === "nota") {
+            c.nota = ed.nota || "";
+            if (ed.foto) { c.foto = ed.foto; c.fotoLocal = null; }
+            else if (ed.imagenB64) c.fotoLocal = ed.imagenB64;
+            else if (!c.nota) { c.foto = null; c.fotoLocal = null; } // nota vacía limpia todo
+          } else if (ed.accion === "baja") c.del = 1;
           cambios.set(ed.objetivo, c);
         }
       });
@@ -58,7 +69,8 @@
           type: "Feature",
           geometry: { type: "Point", coordinates: [c.lon, c.lat] },
           properties: { id: c.id, m: c.m, cv: c.cv, lugar: c.lugar,
-                        n: c.numero, nota: c.nota, casa: 1 },
+                        n: c.numero, nota: c.nota, casa: 1,
+                        foto: c.foto || "", fotoLocal: c.fotoLocal || "" },
         };
       }),
     };
@@ -69,7 +81,7 @@
     const cambios = efectivas().cambios;
     fc.features.forEach(function (f) {
       const p = f.properties;
-      delete p.del; delete p.nota;
+      delete p.del; delete p.nota; delete p.foto; delete p.fotoLocal;
       if (p.orig) { f.geometry.coordinates = p.orig.slice(); delete p.orig; }
       const c = cambios.get(p.m + "|" + p.cv + "|" + p.n);
       if (!c) return;
@@ -78,6 +90,8 @@
         f.geometry.coordinates = [c.lon, c.lat];
       }
       if (c.nota) p.nota = c.nota;
+      if (c.foto) p.foto = c.foto;
+      if (c.fotoLocal) p.fotoLocal = c.fotoLocal;
       if (c.del) p.del = 1;
     });
   }
@@ -86,7 +100,14 @@
     ed.id = ed.id || ("e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
     ed.ts = Date.now();
     pendientes.push(ed);
-    guardar(LS_PEND, pendientes);
+    try {
+      localStorage.setItem(LS_PEND, JSON.stringify(pendientes));
+    } catch (e) {
+      // cuota llena (fotos grandes en cola): no perder silenciosamente
+      pendientes.pop();
+      window.alert("Sin espacio local para guardar esto (fotos pendientes de sincronizar). Busca cobertura para sincronizar e inténtalo de nuevo.");
+      return null;
+    }
     if (alCambiar) alCambiar();
     sincronizar();
     return ed;
@@ -105,10 +126,13 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.ok) {
-          cache = cache.concat(lote);
+          // el servidor devuelve el lote procesado (con id de foto en Drive,
+          // sin base64); si no, usamos lo enviado
+          cache = cache.concat(Array.isArray(j.edits) ? j.edits : lote);
           pendientes = pendientes.slice(lote.length);
           guardar(LS_CACHE, cache);
           guardar(LS_PEND, pendientes);
+          if (alCambiar) alCambiar();
         } else if (j.error && /PIN/i.test(j.error)) {
           localStorage.removeItem(LS_PIN);
           if (window.Edicion.alPinIncorrecto) window.Edicion.alPinIncorrecto();
