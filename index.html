@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<meta name="color-scheme" content="light only">
+<meta name="theme-color" content="#1e293b">
+<title>Urxencias A Ulloa — aldeas y portales</title>
+<link href="lib/maplibre-gl.css" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body, #map { height: 100%; width: 100%; overflow: hidden; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color-scheme: light; }
+
+  #cabecera {
+    position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+    width: min(560px, calc(100% - 120px)); z-index: 20;
+  }
+  #busqueda {
+    width: 100%; padding: 12px 14px; font-size: 16px;
+    border: 2px solid #334155; border-radius: 10px; background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: none;
+  }
+  #busqueda:focus { border-color: #1d4ed8; }
+  #resultados {
+    margin-top: 4px; background: #fff; border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
+    max-height: min(55vh, calc(100dvh - 140px));
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  .res { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; cursor: pointer;
+    font-size: 16px; touch-action: manipulation; }
+  .res:last-child { border-bottom: none; }
+  .res:hover, .res.marcado { background: #dbeafe; }
+  .res.vacio { color: #64748b; cursor: default; font-size: 14px; }
+  .res small { font-size: 13px; color: #475569; }
+  .tag { background: #e2e8f0; color: #475569; border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+  .tag.warn { background: #fef3c7; color: #92400e; }
+
+  #btn-panel {
+    position: fixed; top: 8px; left: 8px; z-index: 30;
+    width: 48px; height: 48px; font-size: 22px; border: none; border-radius: 10px;
+    background: #1e293b; color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    touch-action: manipulation;
+  }
+  #panel {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 25;
+    width: min(360px, 88%); background: #f8fafc; padding: 64px 14px 14px;
+    transform: translateX(-105%); transition: transform .2s ease;
+    overflow-y: auto; overscroll-behavior: contain;
+    box-shadow: 4px 0 16px rgba(0,0,0,.25);
+  }
+  #panel.abierto { transform: translateX(0); }
+  #panel h2 { font-size: 15px; margin: 14px 0 6px; color: #0f172a; }
+  #panel .mini, .mini { font-size: 12.5px; color: #475569; margin-top: 6px; }
+  .san-item { background: #fff; border-left: 4px solid #0891b2; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 14px; cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .san-item b { font-size: 15px; }
+  a.tel { display: inline-block; padding: 10px 8px; color: #1d4ed8;
+    text-decoration: none; font-weight: 600; font-size: 15px; touch-action: manipulation; }
+  .san-pac { border-left-color: #dc2626; }
+  .san-hospital { border-left-color: #7c3aed; }
+  .leyenda div { font-size: 13px; margin: 3px 0; }
+  .punto { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+    margin-right: 6px; border: 1.5px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,.5); }
+
+  #aviso-clave {
+    position: fixed; bottom: 34px; left: 50%; transform: translateX(-50%); z-index: 40;
+    background: #fef3c7; color: #92400e; border: 1px solid #d97706;
+    padding: 10px 14px; border-radius: 10px; font-size: 13px; max-width: 90%;
+    cursor: pointer;
+  }
+  #aviso-clave::after { content: " ✕"; font-weight: 700; }
+
+  .maplibregl-popup-content { font-family: inherit; font-size: 15px; padding: 12px 14px; }
+  .maplibregl-popup-content h3 { font-size: 18px; margin-bottom: 4px; padding-right: 34px; }
+  .maplibregl-popup-close-button { width: 40px; height: 40px; font-size: 24px; line-height: 1; }
+  .aviso { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 8px; margin-top: 6px; font-size: 14px; }
+  .pop-botones { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .pop-botones .btn {
+    display: inline-flex; align-items: center; min-height: 44px;
+    background: #1e293b; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; cursor: pointer; text-decoration: none;
+    touch-action: manipulation;
+  }
+  .maplibregl-ctrl-group button { width: 44px; height: 44px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="cabecera">
+  <input id="busqueda" type="search" autocomplete="off" spellcheck="false"
+         autocapitalize="none" autocorrect="off" enterkeyhint="search"
+         aria-label="Buscar aldea"
+         placeholder="Aldea y nº — ej: vilanova 12">
+  <div id="resultados" hidden></div>
+</div>
+
+<button id="btn-panel" aria-label="Información y recursos sanitarios" aria-expanded="false">☰</button>
+
+<aside id="panel">
+  <h2>🚑 Recursos sanitarios</h2>
+  <div id="lista-sanidad"></div>
+  <div class="mini"><b>Emergencias: 061 / 112</b></div>
+
+  <h2>Leyenda</h2>
+  <div class="leyenda">
+    <div><span class="punto" style="background:#1d4ed8"></span>Palas de Rei (43 parroquias)</div>
+    <div><span class="punto" style="background:#b91c1c"></span>Monterroso (28 parroquias)</div>
+    <div><span class="punto" style="background:#047857"></span>Antas de Ulla (28 parroquias)</div>
+    <div><span class="punto" style="background:#d97706"></span>Portal numerado (Catastro), visible al acercar</div>
+  </div>
+
+  <h2>Cómo buscar</h2>
+  <div class="mini">
+    Escribe el <b>lugar</b> tal como llega en el aviso; opcionalmente añade el
+    <b>número de casa</b>, y tras una coma la <b>parroquia</b> o el <b>concello</b>,
+    o el <b>CP</b>. Ejemplos:<br>
+    <i>outeiro, san xoán</i> · <i>vilanova 7</i> · <i>ligonde 27568</i><br>
+    Los nombres repetidos en varias parroquias se marcan con ⚠ — comprueba
+    siempre la parroquia. Un CP con ~ es aproximado (estimado por parroquia).
+  </div>
+
+  <h2>Fuentes y aviso</h2>
+  <div class="mini">
+    Toponimia oficial: Nomenclátor de Galicia (Xunta, CC BY-SA) ·
+    Coordenadas: OpenStreetMap (ODbL) · Portales y CP: D.X. do Catastro ·
+    Sanidad: Sergas. Datos de agosto de 2026.<br><br>
+    ⚠ La mayoría de las casas rurales no tiene número oficial en Catastro
+    (constan como S/N): solo está numerado el 44% de las direcciones de aldea
+    en Antas, el 42% en Monterroso y el 23% en Palas de Rei. Si el número no
+    aparece, el destino fiable es el punto de la aldea. Un número puede
+    existir en Catastro y no estar rotulado en la fachada.<br><br>
+    Herramienta de apoyo a la orientación: no sustituye a la central de
+    coordinación (061/112) ni al criterio profesional.
+  </div>
+</aside>
+
+<div id="aviso-clave" hidden>
+  Falta la clave de MapTiler: edita <b>config.js</b>. Mientras tanto se usa un mapa básico (OSM).
+</div>
+
+<script src="lib/maplibre-gl.js"></script>
+<script src="config.js"></script>
+<script src="data/limites.js"></script>
+<script src="data/entidades.js"></script>
+<script src="data/sanidad.js"></script>
+<script src="js/search.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
