@@ -3,5 +3,4 @@
 window.MAPTILER_KEY = "1AJbVYF5ksTxJroRtxQe";
 
 // URL /exec de la aplicación web de Apps Script (herramientas/apps-script-edicion.gs).
-// Mientras esté vacía, las ediciones se guardan solo en este dispositivo.
-window.EDITS_URL = "";
+window.EDITS_URL = "https://script.google.com/macros/s/AKfycbwFIJUJZ5hjeYcYFermNtAExLhe3USC2pTwqgXBY7AOJQIYCMYBLRy_QkMndCwf7zPP/exec";
