@@ -25,30 +25,68 @@
   const avisoClave = document.getElementById("aviso-clave");
   avisoClave.addEventListener("click", function () { avisoClave.hidden = true; });
 
-  // ---------- carga de portales: arranca YA, no depende del mapa ----------
+  // ---------- carga de portales: núcleo al arrancar, vecinos bajo demanda ----------
+  const MUNIS_NUCLEO = ["27003", "27032", "27040"];
+  const MUNIS_EXT = ["27020", "27023", "27049", "27060", "15046", "15079", "15083",
+    "36020", "36047"];
   const PORTALES = { type: "FeatureCollection", features: [] };
-  const portalesEstado = { "27003": "pendiente", "27032": "pendiente", "27040": "pendiente" };
-  const portalesListos = Promise.all(["27003", "27032", "27040"].map(function (m) {
-    return new Promise(function (resolver) {
-      const s = document.createElement("script");
-      s.src = "data/portales-" + m + ".js";
-      s.onload = function () {
-        try {
-          const fc = window["PORTALES_" + m];
-          if (fc && fc.features) {
-            fc.features.forEach(function (f) { f.properties.m = m; });
-            PORTALES.features = PORTALES.features.concat(fc.features);
-            portalesEstado[m] = "ok";
-          } else {
-            portalesEstado[m] = "fallo";
-          }
-        } catch (e) { portalesEstado[m] = "fallo"; }
-        resolver();
-      };
-      s.onerror = function () { portalesEstado[m] = "fallo"; resolver(); };
-      document.head.appendChild(s);
+  const portalesEstado = {};
+  MUNIS_NUCLEO.concat(MUNIS_EXT).forEach(function (m) { portalesEstado[m] = "pendiente"; });
+
+  function cargarLote(lista) {
+    return Promise.all(lista.map(function (m) {
+      return new Promise(function (resolver) {
+        const s = document.createElement("script");
+        s.src = "data/portales-" + m + ".js";
+        s.onload = function () {
+          try {
+            const fc = window["PORTALES_" + m];
+            if (fc && fc.features) {
+              fc.features.forEach(function (f) { f.properties.m = m; });
+              PORTALES.features = PORTALES.features.concat(fc.features);
+              portalesEstado[m] = "ok";
+            } else {
+              portalesEstado[m] = "fallo";
+            }
+          } catch (e) { portalesEstado[m] = "fallo"; }
+          resolver();
+        };
+        s.onerror = function () { portalesEstado[m] = "fallo"; resolver(); };
+        document.head.appendChild(s);
+      });
+    }));
+  }
+
+  const portalesListos = cargarLote(MUNIS_NUCLEO);
+  let extPromesa = null;
+  function cargarPortalesExt() {
+    if (!extPromesa) {
+      extPromesa = cargarLote(MUNIS_EXT).then(function () {
+        refrescarEdiciones();
+      });
+    }
+    return extPromesa;
+  }
+  function portalesDe(m) {
+    return MUNIS_NUCLEO.indexOf(m) >= 0 ? portalesListos : cargarPortalesExt();
+  }
+
+  // ---------- concellos veciños: mostrar u ocultar ----------
+  let verVecinos = localStorage.getItem("ulloa-vecinos") === "1";
+  function aplicarVecinos() {
+    const filtro = verVecinos ? null : ["!=", ["get", "ext"], 1];
+    ["entidades-circulo", "entidades-etiqueta", "limites-linea"].forEach(function (capa) {
+      filtrarSeguro(capa, filtro);
     });
-  }));
+    const cb = document.getElementById("chk-vecinos");
+    if (cb) cb.checked = verVecinos;
+  }
+  function ponerVecinos(v) {
+    verVecinos = v;
+    try { localStorage.setItem("ulloa-vecinos", v ? "1" : "0"); } catch (e) {}
+    if (v) cargarPortalesExt();
+    aplicarVecinos();
+  }
 
   // ---------- mapa (protegido: sin CDN, el buscador y el panel siguen vivos) ----------
   let map = null;
@@ -149,7 +187,7 @@
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.2, 12, 4.5, 15, 7],
         "circle-color": ["match", ["get", "m"], "27040", COLORES["27040"],
-          "27032", COLORES["27032"], "27003", COLORES["27003"], "#666"],
+          "27032", COLORES["27032"], "27003", COLORES["27003"], "#64748b"],
         "circle-stroke-width": 1.2,
         "circle-stroke-color": ["case", ["==", ["get", "f"], "osm-extra"], "#94a3b8", "#ffffff"],
         "circle-opacity": ["case", ["==", ["get", "f"], "osm-extra"], 0.6, 0.95],
@@ -164,7 +202,7 @@
       },
       paint: {
         "text-color": ["match", ["get", "m"], "27040", COLORES["27040"],
-          "27032", COLORES["27032"], "27003", COLORES["27003"], "#333"],
+          "27032", COLORES["27032"], "27003", COLORES["27003"], "#475569"],
         "text-halo-color": "#ffffff", "text-halo-width": 1.6,
       },
     });
@@ -254,6 +292,7 @@
       paint: { "text-color": "#7f1d1d", "text-halo-color": "#fff", "text-halo-width": 1.6 },
     });
 
+    aplicarVecinos();
   }
 
   // un solo handler de click con caja de tolerancia táctil (±12 px)
@@ -434,6 +473,7 @@
 
   function seleccionarEntidad(f, num) {
     const p = f.properties, coords = f.geometry.coordinates;
+    if (p.ext == 1 && !verVecinos) ponerVecinos(true); // que se vea lo que eliges
     // si el estilo aún no cargó, reaplicar cuando existan las capas
     if (map && !map.getLayer("portales-via")) {
       map.once("load", function () { seleccionarEntidad(f, num); });
@@ -445,7 +485,7 @@
     }
 
     if (num) {
-      portalesListos.then(function () {
+      portalesDe(p.m).then(function () {
         // 1º: casas añadidas por el equipo (por vía o por nombre del lugar)
         const nl = window.Buscador.norm(p.n);
         const casa = Array.from(window.Edicion.efectivas().altas.values()).find(function (c) {
@@ -530,8 +570,9 @@
       }
       const extra = p.f === "osm-extra" ? ' <span class="tag">no oficial</span>' : "";
       const dup = p.dup == 1 ? ' <span class="tag warn">⚠ repetido</span>' : "";
+      const vecino = p.ext == 1 ? ' <span class="tag">veciño</span>' : "";
       const portais = p.np > 0 ? " · " + p.np + " portales" : "";
-      return '<div class="res" data-i="' + i + '"><b>' + p.n + "</b>" + dup + extra +
+      return '<div class="res" data-i="' + i + '"><b>' + p.n + "</b>" + dup + vecino + extra +
         "<br><small>" + (p.p ? p.p + (p.adv ? " (" + p.adv + ")" : "") + " · " : "") + p.c +
         (p.cp ? " · CP " + p.cp + (p.cpx ? "~" : "") : "") + portais + "</small></div>";
     }).join("");
@@ -623,6 +664,10 @@
       alternarPanel(false);
     }
   });
+  const chkVecinos = document.getElementById("chk-vecinos");
+  chkVecinos.checked = verVecinos;
+  chkVecinos.addEventListener("change", function () { ponerVecinos(chkVecinos.checked); });
+
   const listaSan = document.getElementById("lista-sanidad");
   window.SANIDAD.features.forEach(function (f) {
     const p = f.properties;

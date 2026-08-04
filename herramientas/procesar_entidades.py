@@ -23,9 +23,17 @@ from collections import defaultdict
 RAW = sys.argv[1]
 OUT = sys.argv[2]
 
-MUNIS = {"27003": "ANTAS DE ULLA", "27032": "MONTERROSO", "27040": "PALAS DE REI"}
-DISPLAY = {"27003": "Antas de Ulla", "27032": "Monterroso", "27040": "Palas de Rei"}
-REL_IDS = {340149: "27003", 344818: "27032", 340770: "27040"}
+# munis.json: ine, csv (nombre en CSV Xunta), provNombre, nombre, rel, ext
+CONF = json.load(io.open(sys.argv[3], encoding="utf-8")) if len(sys.argv) > 3 else [
+    {"ine": "27003", "csv": "ANTAS DE ULLA", "provNombre": "LUGO", "nombre": "Antas de Ulla", "rel": 340149, "ext": 0},
+    {"ine": "27032", "csv": "MONTERROSO", "provNombre": "LUGO", "nombre": "Monterroso", "rel": 344818, "ext": 0},
+    {"ine": "27040", "csv": "PALAS DE REI", "provNombre": "LUGO", "nombre": "Palas de Rei", "rel": 340770, "ext": 0},
+]
+POR_CSV = {(m["provNombre"], m["csv"]): m for m in CONF}
+MUNIS = {m["ine"]: m for m in CONF}
+DISPLAY = {m["ine"]: m["nombre"] for m in CONF}
+EXT = {m["ine"]: m.get("ext", 0) for m in CONF}
+REL_IDS = {m["rel"]: m["ine"] for m in CONF}
 NUCLEOS = ("town", "village", "hamlet", "isolated_dwelling")
 
 
@@ -62,17 +70,16 @@ def dist(lat1, lon1, lat2, lon2):
 entidades = []
 with io.open(f"{RAW}/nomenclator-galicia.csv", encoding="utf-8-sig") as f:
     for r in csv.reader(f, delimiter=";"):
-        if len(r) < 9 or r[0].strip().upper() != "LUGO":
+        if len(r) < 9:
             continue
-        conc = r[2].strip()
-        for muni, nombre in MUNIS.items():
-            if conc == nombre:
-                entidades.append({
-                    "muni": muni,
-                    "lugar": display(r[8]), "nl": norm(r[8]),
-                    "parr": display(r[4]), "np": norm(r[4]),
-                    "adv": r[6].strip(),
-                })
+        m = POR_CSV.get((r[0].strip().upper(), r[2].strip()))
+        if m:
+            entidades.append({
+                "muni": m["ine"],
+                "lugar": display(r[8]), "nl": norm(r[8]),
+                "parr": display(r[4]), "np": norm(r[4]),
+                "adv": r[6].strip(),
+            })
 
 # ---------- 2. OSM ----------
 osm = defaultdict(list)          # muni -> nodos núcleo
@@ -80,7 +87,7 @@ osm_loc = defaultdict(list)      # muni -> localities
 for muni in MUNIS:
     archivos = [f"places-{muni}.json"]
     if muni == "27040":
-        archivos.append("places-town-27040.json")
+        archivos.append("places-town-27040.json")  # el town de Palas se bajó aparte
     for a in archivos:
         with io.open(f"{RAW}/{a}", encoding="utf-8") as f:
             for e in json.load(f)["elements"]:
@@ -156,6 +163,16 @@ for e in entidades:
     conteo_nombre[e["nl"]] += 1
 
 import difflib
+import os
+
+# huecos resueltos por QA con fuente: [{ine, lugar, parroquia, lon, lat, fuente}]
+MANUALES = {}
+_ruta_man = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "coordenadas-manuales.json")
+if os.path.exists(_ruta_man):
+    for _m in json.load(io.open(_ruta_man, encoding="utf-8")):
+        MANUALES[(_m["ine"], norm(_m["lugar"]), norm(_m["parroquia"]))] = _m
+    print(f"coordenadas manuales cargadas: {len(MANUALES)}")
+
 
 def variantes(nombre):
     """"Pena do Boi Louro ou A Pena Loura" -> ambas; añade clave sin espacios."""
@@ -195,6 +212,20 @@ for e in entidades:
             fuzzy_usados.append({**e, "osm": prox[0]})
 
     lat = lon = None
+    if not cands and not via:
+        # coordenadas verificadas a mano (QA): herramientas/coordenadas-manuales.json
+        man = MANUALES.get((muni, e["nl"], e["np"]))
+        if man:
+            feats.append({
+                "type": "Feature",
+                "geometry": {"type": "Point",
+                             "coordinates": [round(man["lon"], 6), round(man["lat"], 6)]},
+                "properties": {"n": e["lugar"], "p": e["parr"], "adv": e["adv"],
+                               "c": DISPLAY[muni], "m": muni, "cp": "", "cv": "",
+                               "np": 0, "dup": 1 if conteo_nombre[e["nl"]] > 1 else 0,
+                               "f": "manual", "ext": EXT[muni]},
+            })
+            continue
     if cands:
         if len(cands) > 1 and via:
             cands.sort(key=lambda n: dist(n["lat"], n["lon"], via["lat"], via["lon"]))
@@ -222,6 +253,7 @@ for e in entidades:
             "np": via["n_portales"] if via else 0,
             "dup": 1 if conteo_nombre[e["nl"]] > 1 else 0,
             "f": fonte,
+            "ext": EXT[muni],
         },
     })
 
@@ -241,7 +273,7 @@ for muni in MUNIS:
                            "m": muni, "cp": via["cp"] if via else "",
                            "cv": via["cv"] if via else "",
                            "np": via["n_portales"] if via else 0,
-                           "dup": 0, "f": "osm-extra"},
+                           "dup": 0, "f": "osm-extra", "ext": EXT[muni]},
         })
         extras += 1
 
@@ -304,17 +336,24 @@ with io.open(f"{OUT}/entidades.js", "w", encoding="utf-8") as f:
     f.write(";\n")
 
 # ---------- 5. Límites ----------
-with io.open(f"{RAW}/boundaries.json", encoding="utf-8") as f:
-    rels = json.load(f)["elements"]
+rels = []
+for archivo in ("boundaries.json", "boundaries-vecinos.json"):
+    try:
+        with io.open(f"{RAW}/{archivo}", encoding="utf-8") as f:
+            rels += json.load(f)["elements"]
+    except FileNotFoundError:
+        pass
 lfeats = []
 for rel in rels:
+    if rel["id"] not in REL_IDS:
+        continue
     muni = REL_IDS[rel["id"]]
     lineas = [[[round(p["lon"], 5), round(p["lat"], 5)] for p in m["geometry"]]
               for m in rel["members"]
               if m["type"] == "way" and m["role"] == "outer" and m.get("geometry")]
     lfeats.append({"type": "Feature",
                    "geometry": {"type": "MultiLineString", "coordinates": lineas},
-                   "properties": {"m": muni, "n": DISPLAY[muni]}})
+                   "properties": {"m": muni, "n": DISPLAY[muni], "ext": EXT[muni]}})
 with io.open(f"{OUT}/limites.js", "w", encoding="utf-8") as f:
     f.write("window.LIMITES = ")
     json.dump({"type": "FeatureCollection", "features": lfeats}, f,

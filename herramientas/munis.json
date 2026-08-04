@@ -1,0 +1,14 @@
+[
+  {"ine": "27003", "cat": "27003", "prov": "27", "provNombre": "LUGO", "catNombre": "ANTAS DE ULLA", "csv": "ANTAS DE ULLA", "nombre": "Antas de Ulla", "rel": 340149, "ext": 0},
+  {"ine": "27032", "cat": "27032", "prov": "27", "provNombre": "LUGO", "catNombre": "MONTERROSO", "csv": "MONTERROSO", "nombre": "Monterroso", "rel": 344818, "ext": 0},
+  {"ine": "27040", "cat": "27040", "prov": "27", "provNombre": "LUGO", "catNombre": "PALAS DE REI", "csv": "PALAS DE REI", "nombre": "Palas de Rei", "rel": 340770, "ext": 0},
+  {"ine": "27020", "cat": "27020", "prov": "27", "provNombre": "LUGO", "catNombre": "FRIOL", "csv": "FRIOL", "nombre": "Friol", "rel": 340422, "ext": 1},
+  {"ine": "27023", "cat": "27023", "prov": "27", "provNombre": "LUGO", "catNombre": "GUNTIN", "csv": "GUNTÍN", "nombre": "Guntín", "rel": 340425, "ext": 1},
+  {"ine": "27049", "cat": "27049", "prov": "27", "provNombre": "LUGO", "catNombre": "PORTOMARIN", "csv": "PORTOMARÍN", "nombre": "Portomarín", "rel": 340778, "ext": 1},
+  {"ine": "27060", "cat": "27060", "prov": "27", "provNombre": "LUGO", "catNombre": "TABOADA", "csv": "TABOADA", "nombre": "Taboada", "rel": 341071, "ext": 1},
+  {"ine": "15046", "cat": "15047", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "MELIDE", "csv": "MELIDE", "nombre": "Melide", "rel": 341950, "ext": 1},
+  {"ine": "15079", "cat": "15080", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "SANTISO", "csv": "SANTISO", "nombre": "Santiso", "rel": 346205, "ext": 1},
+  {"ine": "15083", "cat": "15084", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "TOQUES", "csv": "TOQUES", "nombre": "Toques", "rel": 343886, "ext": 1},
+  {"ine": "36020", "cat": "36020", "prov": "36", "provNombre": "PONTEVEDRA", "catNombre": "AGOLADA", "csv": "AGOLADA", "nombre": "Agolada", "rel": 346270, "ext": 1},
+  {"ine": "36047", "cat": "36047", "prov": "36", "provNombre": "PONTEVEDRA", "catNombre": "RODEIRO", "csv": "RODEIRO", "nombre": "Rodeiro", "rel": 345981, "ext": 1}
+]

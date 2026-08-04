@@ -1,0 +1,19 @@
+[
+  {"ine": "27020", "lugar": "O Campo da Torre", "parroquia": "Friol", "lon": -7.787123, "lat": 43.027675, "fuente": "Catastro CL CAMPO DA TORRE-FRIOL cv324 + NGBE"},
+  {"ine": "27020", "lugar": "As Veigas", "parroquia": "Guldriz", "lon": -7.752088, "lat": 43.014983, "fuente": "CartoCiudad-IGN"},
+  {"ine": "27020", "lugar": "Portocelo", "parroquia": "Nodar", "lon": -7.863831, "lat": 43.071315, "fuente": "CartoCiudad-IGN + NGBE + OSM Pazo de Portocelo"},
+  {"ine": "27020", "lugar": "Tras do Agro", "parroquia": "O Pacio", "lon": -7.781112, "lat": 42.962422, "fuente": "CartoCiudad-IGN"},
+  {"ine": "27020", "lugar": "A Riba", "parroquia": "San Martiño dos Condes", "lon": -7.821815, "lat": 42.977458, "fuente": "Catastro LG ARRIBA-CONDES cv54 + OSM 'Arriba'"},
+  {"ine": "27020", "lugar": "Toar", "parroquia": "Santalla de Devesa", "lon": -7.761476, "lat": 43.048141, "fuente": "CartoCiudad-IGN"},
+  {"ine": "27020", "lugar": "San Paio", "parroquia": "Xiá", "lon": -7.820894, "lat": 43.007206, "fuente": "Catastro LG TORRE SAN PAIO-XIA cv135 (Fortaleza San Paio de Narla)"},
+  {"ine": "27049", "lugar": "A Fonte da Agra", "parroquia": "Portomarín", "lon": -7.617934, "lat": 42.800214, "fuente": "Catastro LG FONTEAGRA-PORTOMARIN cv92"},
+  {"ine": "27049", "lugar": "San Croio", "parroquia": "Fiz de Rozas", "lon": -7.618657, "lat": 42.840544, "fuente": "Catastro LG SAN CLODIO cv48 + OSM 'San Clodio'"},
+  {"ine": "27049", "lugar": "O Mulidao", "parroquia": "Portomarín", "lon": -7.612353, "lat": 42.806581, "fuente": "CartoCiudad-IGN"},
+  {"ine": "27049", "lugar": "A Casa da Lama", "parroquia": "Recelle", "lon": -7.647661, "lat": 42.851387, "fuente": "OSM hamlet 'A Lama' (Recelle)"},
+  {"ine": "27049", "lugar": "Sanucela", "parroquia": "Vilaxuste", "lon": -7.68745, "lat": 42.86659, "fuente": "OSM hamlet 'Samocela'"},
+  {"ine": "27060", "lugar": "San Roque", "parroquia": "Bembibre", "lon": -7.761868, "lat": 42.722883, "fuente": "OSM capela+castro San Roque + wiki Bembibre"},
+  {"ine": "27060", "lugar": "Susá de Arriba", "parroquia": "Bouzoa", "lon": -7.839778, "lat": 42.690533, "fuente": "Catastro LG SUSA-PQ BOUZOA cv23 + OSM"},
+  {"ine": "27060", "lugar": "A Eirexe", "parroquia": "Cerdeda", "lon": -7.830711, "lat": 42.704798, "fuente": "Catastro LG AIREXE-PQ CERCEDA cv55"},
+  {"ine": "27060", "lugar": "A Eirexe", "parroquia": "Fradé", "lon": -7.795464, "lat": 42.717263, "fuente": "Catastro LG AIREXE-PQ FRADE cv95"},
+  {"ine": "27060", "lugar": "Susá de Arriba", "parroquia": "Mato", "lon": -7.838851, "lat": 42.689565, "fuente": "Catastro LG SUSA-PQ MATO cv147 + OSM"}
+]

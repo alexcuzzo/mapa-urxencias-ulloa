@@ -5,6 +5,13 @@ Antas de Ulla (comarca da Ulloa, Lugo) y los **portales numerados del
 Catastro**, pensado para localizar avisos del servicio médico de urgencias
 con el formato: *lugar + nº de casa + parroquia + concello + CP*.
 
+Incluye además los **9 concellos limítrofes** (Friol, Guntín, Portomarín,
+Taboada, Melide, Santiso, Toques, Agolada y Rodeiro) en gris, activables
+desde el panel ☰; el buscador los encuentra siempre con la etiqueta
+"veciño" y, si eliges uno, la capa se activa sola. En total: **2.244
+lugares oficiales y ~27.000 portales numerados** en 12 concellos de tres
+provincias.
+
 ## Uso
 
 1. Abre `config.js` y pega tu clave API de MapTiler

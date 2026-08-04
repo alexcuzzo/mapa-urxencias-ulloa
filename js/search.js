@@ -105,6 +105,7 @@
       }
       if (it.tipo === "sanidad") score += 5;
       if (it.f.properties.f === "osm-extra") score -= 8;
+      if (it.f.properties.ext == 1) score -= 3; // en empate gana el núcleo
       if (!ok || score <= 0) continue;
       res.push({ item: it, score: score });
     }

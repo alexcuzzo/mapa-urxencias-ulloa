@@ -18,7 +18,11 @@ from pyproj import Transformer
 
 RAW = sys.argv[1]
 OUT = sys.argv[2]  # carpeta data/ del proyecto
-MUNIS = ["27003", "27032", "27040"]
+# munis.json: lista de concellos (ine, cat=código catastral, ...)
+CONF = json.load(open(sys.argv[3], encoding="utf-8")) if len(sys.argv) > 3 else [
+    {"ine": m, "cat": m} for m in ("27003", "27032", "27040")]
+CAT_DE = {m["ine"]: m["cat"] for m in CONF}
+MUNIS = [m["ine"] for m in CONF]
 
 NS = {
     "gml": "http://www.opengis.net/gml/3.2",
@@ -44,7 +48,7 @@ def cargar_callejero(muni):
 
 def procesar(muni):
     vias = cargar_callejero(muni)
-    gml = f"{RAW}/AD-{muni}/A.ES.SDGC.AD.{muni}.gml"
+    gml = f"{RAW}/AD-{muni}/A.ES.SDGC.AD.{CAT_DE[muni]}.gml"
     feats, xs, ys = [], [], []
     sn = 0
     resumen = defaultdict(lambda: {"cps": Counter(), "n_portales": 0, "sum_x": 0.0, "sum_y": 0.0})
