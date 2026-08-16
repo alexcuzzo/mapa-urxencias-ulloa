@@ -4,7 +4,8 @@
 
   const PLACEHOLDER = "PEGA_AQUI_TU_CLAVE";
   const conClave = window.MAPTILER_KEY && window.MAPTILER_KEY !== PLACEHOLDER;
-  const COLORES = { "27040": "#1d4ed8", "27032": "#b91c1c", "27003": "#047857" };
+  const COLORES = { "27040": "#1d4ed8", "27032": "#b91c1c", "27003": "#047857",
+    "27020": "#c026d3" };
   // demotiles solo sirve el fontstack "Open Sans Semibold" (verificado)
   const FUENTE = conClave ? ["Noto Sans Regular"] : ["Open Sans Semibold"];
 
@@ -26,8 +27,8 @@
   avisoClave.addEventListener("click", function () { avisoClave.hidden = true; });
 
   // ---------- carga de portales: núcleo al arrancar, vecinos bajo demanda ----------
-  const MUNIS_NUCLEO = ["27003", "27032", "27040"];
-  const MUNIS_EXT = ["27020", "27023", "27049", "27060", "15046", "15079", "15083",
+  const MUNIS_NUCLEO = ["27003", "27032", "27040", "27020"];
+  const MUNIS_EXT = ["27023", "27049", "27060", "15046", "15079", "15083",
     "36020", "36047"];
   const PORTALES = { type: "FeatureCollection", features: [] };
   const portalesEstado = {};
@@ -64,7 +65,7 @@
   // ---------- concellos veciños: selección individual ----------
   const VECINOS_NOMES = {
     "15046": "Melide", "15079": "Santiso", "15083": "Toques",
-    "27020": "Friol", "27023": "Guntín", "27049": "Portomarín", "27060": "Taboada",
+    "27023": "Guntín", "27049": "Portomarín", "27060": "Taboada",
     "36020": "Agolada", "36047": "Rodeiro",
   };
   const seleccionVecinos = (function () {
@@ -219,7 +220,8 @@
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.2, 12, 4.5, 15, 7],
         "circle-color": ["match", ["get", "m"], "27040", COLORES["27040"],
-          "27032", COLORES["27032"], "27003", COLORES["27003"], "#64748b"],
+          "27032", COLORES["27032"], "27003", COLORES["27003"],
+          "27020", COLORES["27020"], "#64748b"],
         "circle-stroke-width": 1.2,
         "circle-stroke-color": ["case", ["==", ["get", "f"], "osm-extra"], "#94a3b8", "#ffffff"],
         "circle-opacity": ["case", ["==", ["get", "f"], "osm-extra"], 0.6, 0.95],
@@ -234,7 +236,8 @@
       },
       paint: {
         "text-color": ["match", ["get", "m"], "27040", COLORES["27040"],
-          "27032", COLORES["27032"], "27003", COLORES["27003"], "#475569"],
+          "27032", COLORES["27032"], "27003", COLORES["27003"],
+          "27020", "#a21caf", "#475569"],
         "text-halo-color": "#ffffff", "text-halo-width": 1.6,
       },
     });
