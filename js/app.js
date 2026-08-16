@@ -62,6 +62,64 @@
   const portalesListos = Promise.all(MUNIS_NUCLEO.map(cargarMuni));
   function portalesDe(m) { return cargarMuni(m); }
 
+  // ---------- directorio de alojamientos y negocios ----------
+  const GRUPOS = {
+    aloxa: { e: "🛏", nome: "Aloxamento", c: "#0284c7" },
+    comida: { e: "🍽", nome: "Comer e beber", c: "#ea580c" },
+    tendas: { e: "🛒", nome: "Tendas", c: "#7c3aed" },
+    saude: { e: "💊", nome: "Farmacias e saúde", c: "#e11d48" },
+    servizos: { e: "⛽", nome: "Servizos", c: "#0f766e" },
+    outros: { e: "🔧", nome: "Outros", c: "#737373" },
+  };
+  let negociosVisible = false;
+  const gruposActivos = (function () {
+    try {
+      const g = JSON.parse(localStorage.getItem("ulloa-dir-grupos"));
+      if (Array.isArray(g) && g.length) {
+        return new Set(g.filter(function (x) { return GRUPOS[x]; }));
+      }
+    } catch (e) {}
+    return new Set(Object.keys(GRUPOS));
+  })();
+
+  let negociosPromesa = null;
+  function cargarNegocios() {
+    if (!negociosPromesa) {
+      negociosPromesa = new Promise(function (resolver) {
+        const s = document.createElement("script");
+        s.src = "data/negocios.js";
+        s.onload = resolver;
+        s.onerror = resolver;
+        document.head.appendChild(s);
+      }).then(function () {
+        if (map) {
+          const src = map.getSource("negocios");
+          if (src && window.NEGOCIOS) src.setData(window.NEGOCIOS);
+        }
+        window.Buscador.reindexar();
+      });
+    }
+    return negociosPromesa;
+  }
+  setTimeout(cargarNegocios, 2500); // en segundo plano: el buscador los conoce pronto
+
+  function aplicarNegocios() {
+    if (!map) return;
+    ["negocios-circulo", "negocios-etiqueta"].forEach(function (capa) {
+      if (map.getLayer(capa)) {
+        map.setLayoutProperty(capa, "visibility", negociosVisible ? "visible" : "none");
+      }
+    });
+    filtrarSeguro("negocios-circulo", ["in", ["get", "g"], ["literal", Array.from(gruposActivos)]]);
+    filtrarSeguro("negocios-etiqueta", ["in", ["get", "g"], ["literal", Array.from(gruposActivos)]]);
+    document.getElementById("btn-negocios").classList.toggle("activo", negociosVisible);
+  }
+  function ponerNegocios(v) {
+    negociosVisible = v;
+    if (v) cargarNegocios();
+    aplicarNegocios();
+  }
+
   // ---------- concellos veciños: selección individual ----------
   const VECINOS_NOMES = {
     "15046": "Melide", "15079": "Santiso", "15083": "Toques",
@@ -327,12 +385,41 @@
       paint: { "text-color": "#7f1d1d", "text-halo-color": "#fff", "text-halo-width": 1.6 },
     });
 
+    // Alojamientos y negocios (visibles solo con el directorio activo)
+    map.addSource("negocios", {
+      type: "geojson",
+      data: (window.NEGOCIOS || { type: "FeatureCollection", features: [] }),
+    });
+    map.addLayer({
+      id: "negocios-circulo", type: "circle", source: "negocios", minzoom: 10,
+      layout: { visibility: "none" },
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3.5, 15, 8],
+        "circle-color": ["match", ["get", "g"],
+          "aloxa", GRUPOS.aloxa.c, "comida", GRUPOS.comida.c,
+          "tendas", GRUPOS.tendas.c, "saude", GRUPOS.saude.c,
+          "servizos", GRUPOS.servizos.c, GRUPOS.outros.c],
+        "circle-stroke-width": 1.5, "circle-stroke-color": "#fff",
+      },
+    });
+    map.addLayer({
+      id: "negocios-etiqueta", type: "symbol", source: "negocios", minzoom: 13.5,
+      layout: {
+        visibility: "none",
+        "text-field": ["get", "n"], "text-font": fuente, "text-size": 11,
+        "text-offset": [0, 0.9], "text-anchor": "top", "text-optional": true,
+      },
+      paint: { "text-color": "#0f172a", "text-halo-color": "#fff", "text-halo-width": 1.5 },
+    });
+
     aplicarVecinos();
+    aplicarNegocios();
   }
 
   // un solo handler de click con caja de tolerancia táctil (±12 px)
   const CAPAS_CLICK = ["portal-obxectivo", "casa-obxectivo", "casas-circulo",
-    "portales-via", "portales-circulo", "sanidad-circulo", "entidades-circulo"];
+    "negocios-circulo", "portales-via", "portales-circulo",
+    "sanidad-circulo", "entidades-circulo"];
   function enlazarInteraccion() {
     map.on("click", function (e) {
       if (Editor.interceptarClick(e)) return; // modos mover / colocar casa
@@ -346,7 +433,9 @@
       });
       const f = feats[0];
       const coords = f.geometry.coordinates;
-      if (f.layer.id.indexOf("casa") === 0) {
+      if (f.layer.id === "negocios-circulo") {
+        popupNegocio(f.properties, coords);
+      } else if (f.layer.id.indexOf("casa") === 0) {
         popupCasa(f.properties, coords);
       } else if (f.layer.id.indexOf("portales") === 0 || f.layer.id === "portal-obxectivo") {
         popupPortal(f.properties, coords);
@@ -482,6 +571,19 @@
       botones(lat, lon) + Editor.botonesCasa(p);
     abrirPopup(coords, html);
     mostrarDestino((p.n ? "Nº " + p.n : "Casa") + (p.lugar ? " · " + p.lugar : ""), lat, lon);
+  }
+
+  function popupNegocio(p, coords) {
+    const lat = coords[1].toFixed(5), lon = coords[0].toFixed(5);
+    const g = GRUPOS[p.g] || GRUPOS.outros;
+    let html = "<h3>" + g.e + " " + esc(p.n) + "</h3>" +
+      "<div>" + esc(p.t) + " · " + esc(p.c) + "</div>";
+    if (p.tel) html += '<div><a class="tel" href="tel:' + esc(p.tel.replace(/\s/g, "")) + '">☎ ' + esc(p.tel) + "</a></div>";
+    if (p.h) html += '<div class="mini">🕐 ' + esc(p.h) + "</div>";
+    if (p.web) html += '<div class="pop-botones"><a class="btn" target="_blank" rel="noopener" href="' + esc(p.web) + '">🌐 Web</a></div>';
+    html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon);
+    abrirPopup(coords, html);
+    mostrarDestino(p.n + " (" + p.c + ")", lat, lon);
   }
 
   function popupSanidad(p, coords) {
@@ -622,6 +724,11 @@
           "</b>" + (p.ext == 1 ? ' <span class="tag">veciño</span>' : "") +
           '<br><small>' + B.escapar(p.c) + " · " + p.nlugares + " lugares" + dist + "</small></div>";
       }
+      if (x.item.tipo === "poi") {
+        const g = GRUPOS[p.g] || GRUPOS.outros;
+        return '<div class="res" data-i="' + i + '"><b>' + g.e + " " + B.resaltar(p.n, q) +
+          "</b><br><small>" + B.escapar(p.t) + " · " + B.escapar(p.c) + dist + "</small></div>";
+      }
       if (x.item.tipo === "casa") {
         return '<div class="res" data-i="' + i + '"><b>🏠 ' +
           (p.n ? "Nº " + B.escapar(p.n) + " · " : "") + B.resaltar(p.lugar || "", q) +
@@ -661,6 +768,11 @@
       }
       mostrarDestino("Parroquia de " + p.n + " (" + p.c + ")",
         f.geometry.coordinates[1].toFixed(5), f.geometry.coordinates[0].toFixed(5));
+    } else if (r.item.tipo === "poi") {
+      limpiarSeleccion();
+      ponerNegocios(true); // que se vea el punto elegido
+      if (map) map.flyTo({ center: f.geometry.coordinates, zoom: 16.5 });
+      popupNegocio(p, f.geometry.coordinates);
     } else if (r.item.tipo === "casa") {
       limpiarSeleccion();
       filtrarSeguro("casa-obxectivo", ["==", ["get", "id"], p.id]);
@@ -741,6 +853,99 @@
       alternarPanel(false);
     }
   });
+  // ---------- panel del directorio ----------
+  const directorio = document.getElementById("directorio");
+  const btnNegocios = document.getElementById("btn-negocios");
+  const dirLista = document.getElementById("dir-lista");
+
+  (function () {
+    const chips = document.getElementById("dir-chips");
+    Object.keys(GRUPOS).forEach(function (g) {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.style.setProperty("--cg", GRUPOS[g].c);
+      b.textContent = GRUPOS[g].e + " " + GRUPOS[g].nome;
+      b.classList.toggle("activo", gruposActivos.has(g));
+      b.addEventListener("click", function () {
+        if (gruposActivos.has(g)) gruposActivos.delete(g);
+        else gruposActivos.add(g);
+        b.classList.toggle("activo", gruposActivos.has(g));
+        try { localStorage.setItem("ulloa-dir-grupos", JSON.stringify(Array.from(gruposActivos))); } catch (e) {}
+        aplicarNegocios();
+        pintarDirectorio();
+      });
+      chips.appendChild(b);
+    });
+  })();
+
+  function pintarDirectorio() {
+    if (!window.NEGOCIOS) {
+      dirLista.innerHTML = '<div class="mini">Cargando directorio…</div>';
+      return;
+    }
+    const centro = map ? map.getCenter() : { lat: 42.87, lng: -7.87 };
+    const cerca = window.NEGOCIOS.features
+      .filter(function (f) { return gruposActivos.has(f.properties.g); })
+      .map(function (f) {
+        const co = f.geometry.coordinates;
+        const dy = (co[1] - centro.lat) * 111.32;
+        const dx = (co[0] - centro.lng) * 111.32 * Math.cos(centro.lat * Math.PI / 180);
+        return { f: f, d: Math.sqrt(dx * dx + dy * dy) };
+      })
+      .sort(function (a, b) { return a.d - b.d; })
+      .slice(0, 40);
+    dirLista.innerHTML = cerca.map(function (x, i) {
+      const p = x.f.properties;
+      const g = GRUPOS[p.g] || GRUPOS.outros;
+      const dist = x.d < 1 ? Math.round(x.d * 1000) + " m"
+        : x.d.toFixed(x.d < 10 ? 1 : 0).replace(".", ",") + " km";
+      return '<div class="dir-item" data-i="' + i + '" style="--cg:' + g.c + '">' +
+        "<b>" + g.e + " " + esc(p.n) + "</b><br><small>" + esc(p.t) + " · " +
+        esc(p.c) + " · a " + dist + "</small>" +
+        (p.tel ? '<br><a class="tel" href="tel:' + esc(p.tel.replace(/\s/g, "")) + '">☎ ' + esc(p.tel) + "</a>" : "") +
+        "</div>";
+    }).join("") || '<div class="mini">Nada en las categorías marcadas.</div>';
+    dirLista.__cerca = cerca;
+  }
+  dirLista.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") return;
+    const el = e.target.closest(".dir-item");
+    if (!el) return;
+    const x = dirLista.__cerca[+el.dataset.i];
+    if (!x) return;
+    directorio.classList.remove("abierto");
+    if (map) map.flyTo({ center: x.f.geometry.coordinates, zoom: 16.5 });
+    popupNegocio(x.f.properties, x.f.geometry.coordinates);
+  });
+
+  function alternarDirectorio(abrir) {
+    directorio.classList.toggle("abierto", abrir);
+    if (abrir) {
+      ponerNegocios(true);
+      cargarNegocios().then(pintarDirectorio);
+      pintarDirectorio();
+    }
+  }
+  btnNegocios.addEventListener("click", function () {
+    if (directorio.classList.contains("abierto")) {
+      alternarDirectorio(false);
+      ponerNegocios(false); // cerrar desde el botón apaga también la capa
+    } else {
+      alternarDirectorio(true);
+    }
+  });
+  document.getElementById("dir-cerrar").addEventListener("click", function () {
+    alternarDirectorio(false); // la capa queda encendida para seguir viéndola
+  });
+  let dirTemporizador = null;
+  if (map) {
+    map.on("moveend", function () {
+      if (!directorio.classList.contains("abierto")) return;
+      clearTimeout(dirTemporizador);
+      dirTemporizador = setTimeout(pintarDirectorio, 350);
+    });
+  }
+
   // casillas de concellos veciños (una por concello + "Todos")
   (function () {
     const cont = document.getElementById("lista-vecinos");

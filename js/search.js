@@ -210,6 +210,12 @@
       indice.push(entrada("sanidad", f, f.properties.n, f.properties.dir || "", "", false));
     });
 
+    // alojamientos y negocios (si ya están cargados)
+    ((window.NEGOCIOS && window.NEGOCIOS.features) || []).forEach(function (f) {
+      const p = f.properties;
+      indice.push(entrada("poi", f, p.n + " " + p.t, p.t + " " + p.c, "", false));
+    });
+
     // casas del equipo: la nota ("portalón verde") también es texto buscable
     if (window.Edicion) {
       window.Edicion.fcCasas().features.forEach(function (f) {

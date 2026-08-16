@@ -56,6 +56,17 @@ de ningún CDN, útil con la cobertura intermitente de la zona. Para usar la
 geolocalización y el portapapeles desde el móvil, sírvela por HTTPS
 (GitHub Pages / Netlify).
 
+## Directorio de alojamientos y negocios (🏪)
+
+Botón **🏪**: abre el directorio con los alojamientos (albergues, casas
+rurales, hoteles), bares y restaurantes, tiendas, farmacias y servicios
+(gasolineras, bancos, taxis…) de los 12 concellos, con **filtros por
+categoría** y ordenados por **distancia al centro del mapa**, con teléfono a
+un toque. Los puntos se pintan en el mapa mientras el directorio está activo
+y el buscador los encuentra siempre ("farmacia melide", "albergue ligonde").
+Fuente: OpenStreetMap (se regenera con `herramientas/descargar_negocios.py`
++ `procesar_negocios.py`).
+
 ## Edición colaborativa (añadir/corregir casas)
 
 Botón **✏️**: activa el modo edición (pide el PIN del equipo una vez por
