@@ -217,7 +217,7 @@
     });
 
     // alojamientos y negocios (si ya están cargados)
-    ((window.NEGOCIOS && window.NEGOCIOS.features) || []).forEach(function (f) {
+    ((window.POIS && window.POIS.features) || []).forEach(function (f) {
       const p = f.properties;
       indice.push(entrada("poi", f, p.n + " " + p.t, p.t + " " + p.c, "", false));
     });

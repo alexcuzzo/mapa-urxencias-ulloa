@@ -113,12 +113,15 @@
   // ---------- directorio de alojamientos y negocios ----------
   const GRUPOS = {
     aloxa: { e: "🛏", nome: "Aloxamento", c: "#0284c7" },
+    vut: { e: "🏠", nome: "Vivendas turísticas", c: "#4f46e5" },
     comida: { e: "🍽", nome: "Comer e beber", c: "#ea580c" },
     tendas: { e: "🛒", nome: "Tendas", c: "#7c3aed" },
     saude: { e: "💊", nome: "Farmacias e saúde", c: "#e11d48" },
     servizos: { e: "⛽", nome: "Servizos", c: "#0f766e" },
     outros: { e: "🔧", nome: "Outros", c: "#737373" },
   };
+  // por defecto todo menos las vivendas turísticas (son >1.000 y tapan el resto)
+  const POR_DEFECTO = Object.keys(GRUPOS).filter(function (g) { return g !== "vut"; });
   let negociosVisible = false;
   const gruposActivos = (function () {
     try {
@@ -127,22 +130,49 @@
         return new Set(g.filter(function (x) { return GRUPOS[x]; }));
       }
     } catch (e) {}
-    return new Set(Object.keys(GRUPOS));
+    return new Set(POR_DEFECTO);
   })();
+
+  // OSM + REAT en una sola colección, quitando los duplicados de alojamiento
+  // (el REAT es el registro oficial y manda sobre lo mapeado en OSM)
+  function combinarPois() {
+    const reat = (window.ALOXAMENTOS && window.ALOXAMENTOS.features) || [];
+    const osm = (window.NEGOCIOS && window.NEGOCIOS.features) || [];
+    const clave = function (s) {
+      return window.Buscador.norm(s).replace(/^(albergue|hotel|pension|hostal|casa|apartamentos?|camping) /, "");
+    };
+    const oficiales = reat.map(function (f) {
+      return { k: clave(f.properties.n), co: f.geometry.coordinates };
+    });
+    const limpios = osm.filter(function (f) {
+      if (f.properties.g !== "aloxa") return true;
+      const k = clave(f.properties.n), co = f.geometry.coordinates;
+      return !oficiales.some(function (o) {
+        if (!o.k || !k) return false;
+        if (o.k.indexOf(k) < 0 && k.indexOf(o.k) < 0) return false;
+        return Math.abs(o.co[0] - co[0]) < 0.004 && Math.abs(o.co[1] - co[1]) < 0.003;
+      });
+    });
+    window.POIS = { type: "FeatureCollection", features: limpios.concat(reat) };
+    return window.POIS;
+  }
 
   let negociosPromesa = null;
   function cargarNegocios() {
     if (!negociosPromesa) {
-      negociosPromesa = new Promise(function (resolver) {
-        const s = document.createElement("script");
-        s.src = "data/negocios.js";
-        s.onload = resolver;
-        s.onerror = resolver;
-        document.head.appendChild(s);
-      }).then(function () {
+      negociosPromesa = Promise.all(["data/negocios.js", "data/aloxamentos.js"].map(function (src) {
+        return new Promise(function (resolver) {
+          const s = document.createElement("script");
+          s.src = src;
+          s.onload = resolver;
+          s.onerror = resolver;
+          document.head.appendChild(s);
+        });
+      })).then(function () {
+        const fc = combinarPois();
         if (map) {
           const src = map.getSource("negocios");
-          if (src && window.NEGOCIOS) src.setData(window.NEGOCIOS);
+          if (src) src.setData(fc);
         }
         window.Buscador.reindexar();
       });
@@ -439,7 +469,7 @@
     // Alojamientos y negocios (visibles solo con el directorio activo)
     map.addSource("negocios", {
       type: "geojson",
-      data: (window.NEGOCIOS || { type: "FeatureCollection", features: [] }),
+      data: (window.POIS || { type: "FeatureCollection", features: [] }),
     });
     map.addLayer({
       id: "negocios-circulo", type: "circle", source: "negocios", minzoom: 10,
@@ -447,7 +477,7 @@
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3.5, 15, 8],
         "circle-color": ["match", ["get", "g"],
-          "aloxa", GRUPOS.aloxa.c, "comida", GRUPOS.comida.c,
+          "aloxa", GRUPOS.aloxa.c, "vut", GRUPOS.vut.c, "comida", GRUPOS.comida.c,
           "tendas", GRUPOS.tendas.c, "saude", GRUPOS.saude.c,
           "servizos", GRUPOS.servizos.c, GRUPOS.outros.c],
         "circle-stroke-width": 1.5, "circle-stroke-color": "#fff",
@@ -629,8 +659,13 @@
     const g = GRUPOS[p.g] || GRUPOS.outros;
     let html = "<h3>" + g.e + " " + esc(p.n) + "</h3>" +
       "<div>" + esc(p.t) + " · " + esc(p.c) + "</div>";
+    if (p.d) html += "<div>" + esc(p.d) + (p.cp ? " · CP " + esc(p.cp) : "") + "</div>";
+    if (p.p) html += '<div class="mini">Parroquia: ' + esc(p.p) + "</div>";
+    if (p.pl) html += '<div class="mini">🛏 ' + p.pl + " prazas</div>";
     if (p.tel) html += '<div><a class="tel" href="tel:' + esc(p.tel.replace(/\s/g, "")) + '">☎ ' + esc(p.tel) + "</a></div>";
     if (p.h) html += '<div class="mini">🕐 ' + esc(p.h) + "</div>";
+    if (p.apx) html += '<div class="aviso">⚠ Posición aproximada: eje de la calle o del lugar, no el portal exacto.</div>';
+    if (p.reat) html += '<div class="mini">Rexistro turístico: ' + esc(p.reat) + "</div>";
     if (p.web) html += '<div class="pop-botones"><a class="btn" target="_blank" rel="noopener" href="' + esc(p.web) + '">🌐 Web</a></div>';
     html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon);
     abrirPopup(coords, html);
@@ -934,12 +969,12 @@
   })();
 
   function pintarDirectorio() {
-    if (!window.NEGOCIOS) {
+    if (!window.POIS) {
       dirLista.innerHTML = '<div class="mini">Cargando directorio…</div>';
       return;
     }
     const centro = map ? map.getCenter() : { lat: 42.87, lng: -7.87 };
-    const cerca = window.NEGOCIOS.features
+    const cerca = window.POIS.features
       .filter(function (f) { return gruposActivos.has(f.properties.g); })
       .map(function (f) {
         const co = f.geometry.coordinates;
@@ -955,8 +990,10 @@
       const dist = x.d < 1 ? Math.round(x.d * 1000) + " m"
         : x.d.toFixed(x.d < 10 ? 1 : 0).replace(".", ",") + " km";
       return '<div class="dir-item" data-i="' + i + '" style="--cg:' + g.c + '">' +
-        "<b>" + g.e + " " + esc(p.n) + "</b><br><small>" + esc(p.t) + " · " +
-        esc(p.c) + " · a " + dist + "</small>" +
+        "<b>" + g.e + " " + esc(p.n) + "</b><br><small>" + esc(p.t) +
+        (p.pl ? " · " + p.pl + " prazas" : "") + " · " + esc(p.c) +
+        " · a " + dist + (p.apx ? " ⚠" : "") + "</small>" +
+        (p.d ? "<br><small>" + esc(p.d) + "</small>" : "") +
         (p.tel ? '<br><a class="tel" href="tel:' + esc(p.tel.replace(/\s/g, "")) + '">☎ ' + esc(p.tel) + "</a>" : "") +
         "</div>";
     }).join("") || '<div class="mini">Nada en las categorías marcadas.</div>';

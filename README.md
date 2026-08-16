@@ -62,14 +62,24 @@ geolocalización y el portapapeles desde el móvil, sírvela por HTTPS
 
 ## Directorio de alojamientos y negocios (🏪)
 
-Botón **🏪**: abre el directorio con los alojamientos (albergues, casas
-rurales, hoteles), bares y restaurantes, tiendas, farmacias y servicios
-(gasolineras, bancos, taxis…) de los 12 concellos, con **filtros por
-categoría** y ordenados por **distancia al centro del mapa**, con teléfono a
+Botón **🏪**: abre el directorio con **5.235 sitios** de los 19 concellos —
+alojamientos, **vivendas de uso turístico**, bares y restaurantes, tiendas,
+farmacias y servicios (gasolineras, bancos, taxis…) — con **filtros por
+categoría**, ordenados por **distancia al centro del mapa** y con teléfono a
 un toque. Los puntos se pintan en el mapa mientras el directorio está activo
 y el buscador los encuentra siempre ("farmacia melide", "albergue ligonde").
-Fuente: OpenStreetMap (se regenera con `herramientas/descargar_negocios.py`
-+ `procesar_negocios.py`).
+
+- **Alojamientos y vivendas turísticas (1.834)**: del **REAT**, el registro
+  oficial de turismo de la Xunta, con nº de registro, plazas y dirección.
+  Las vivendas de uso turístico no traen coordenadas en el registro: se
+  geolocalizan con el callejero del Catastro de este mismo proyecto (1.651 al
+  portal exacto; las marcadas ⚠ quedan en el eje de la calle). El chip de
+  vivendas turísticas viene apagado por defecto.
+- **Comercio y servicios (3.401)**: OpenStreetMap.
+
+Se regenera con `descargar_negocios.py` + `procesar_negocios.py` (OSM) y
+`procesar_reat.py` (REAT, tras bajar el CSV de
+`descargascdn.xunta.gal/interno/smarxa/reat_directorio-alojamientos_esp.csv`).
 
 ## Edición colaborativa (añadir/corregir casas)
 
