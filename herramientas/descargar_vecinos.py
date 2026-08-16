@@ -15,7 +15,7 @@ CONF = json.load(io.open(sys.argv[1], encoding="utf-8"))
 RAW = sys.argv[2]
 VECINOS = [m for m in CONF if m["ext"] == 1]
 OVERPASS = "https://overpass-api.de/api/interpreter"
-PLACES = "town|village|hamlet|isolated_dwelling|locality"
+PLACES = "city|town|village|hamlet|isolated_dwelling|locality|suburb|quarter|neighbourhood"
 
 
 def pedir(url, data=None, intentos=5, espera_base=15):

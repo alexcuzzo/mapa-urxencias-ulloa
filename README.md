@@ -5,12 +5,16 @@ Antas de Ulla (comarca da Ulloa, Lugo) y los **portales numerados del
 Catastro**, pensado para localizar avisos del servicio médico de urgencias
 con el formato: *lugar + nº de casa + parroquia + concello + CP*.
 
-Incluye además los **9 concellos limítrofes** (Friol, Guntín, Portomarín,
-Taboada, Melide, Santiso, Toques, Agolada y Rodeiro) en gris, activables
-desde el panel ☰; el buscador los encuentra siempre con la etiqueta
-"veciño" y, si eliges uno, la capa se activa sola. En total: **2.244
-lugares oficiales y ~27.000 portales numerados** en 12 concellos de tres
-provincias.
+El núcleo son Palas de Rei, Monterroso, Antas de Ulla y Friol; además,
+**15 concellos más activables** desde el panel ☰: los limítrofes (Guntín,
+Portomarín, Taboada, Melide, Santiso, Toques, Agolada, Rodeiro) y el
+corredor del Camino Francés hasta Compostela (Sarria, Samos, Triacastela,
+Pedrafita do Cebreiro, Arzúa, O Pino y Santiago de Compostela). El buscador
+los encuentra siempre y, si eliges un resultado, activa su concello solo.
+En total: **3.510 lugares oficiales (3.509 localizados) y ~65.000 portales
+numerados** en 19 concellos de tres provincias. En los cascos urbanos
+(Santiago, Sarria, Melide, Arzúa…) también se busca por **calle y número**
+("rúa do vilar 15") una vez activado el concello.
 
 ## Uso
 

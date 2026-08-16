@@ -29,10 +29,55 @@
   // ---------- carga de portales: núcleo al arrancar, vecinos bajo demanda ----------
   const MUNIS_NUCLEO = ["27003", "27032", "27040", "27020"];
   const MUNIS_EXT = ["27023", "27049", "27060", "15046", "15079", "15083",
-    "36020", "36047"];
+    "36020", "36047",
+    "27057", "27062", "27055", "27045", "15006", "15066", "15078"];
   const PORTALES = { type: "FeatureCollection", features: [] };
   const portalesEstado = {};
   MUNIS_NUCLEO.concat(MUNIS_EXT).forEach(function (m) { portalesEstado[m] = "pendiente"; });
+
+  const NOMES_MUNI = {
+    "27003": "Antas de Ulla", "27032": "Monterroso", "27040": "Palas de Rei",
+    "27020": "Friol", "27023": "Guntín", "27049": "Portomarín", "27060": "Taboada",
+    "15046": "Melide", "15079": "Santiso", "15083": "Toques",
+    "36020": "Agolada", "36047": "Rodeiro",
+    "27057": "Sarria", "27062": "Triacastela", "27055": "Samos",
+    "27045": "Pedrafita do Cebreiro", "15006": "Arzúa", "15066": "O Pino",
+    "15078": "Santiago de Compostela",
+  };
+
+  // vías (calles/lugares del Catastro) de los concellos ya cargados: hace
+  // buscable el callejero urbano ("Rúa do Vilar 15" en Santiago o Sarria)
+  window.VIAS = [];
+  const TIPO_VIA = { RU: "Rúa", CL: "Rúa", CALLE: "Rúa", AV: "Avenida", AVDA: "Avenida",
+    PZ: "Praza", PLAZA: "Praza", PR: "Praza", CM: "Camiño", CJ: "Calexón",
+    TR: "Travesía", PS: "Paseo", CR: "Estrada", CTRA: "Estrada", GL: "Glorieta",
+    RD: "Ronda", ES: "Escalinata", UR: "Urbanización", PG: "Polígono", BO: "Barrio" };
+  function indexarVias(m) {
+    const agregado = {};
+    PORTALES.features.forEach(function (f) {
+      const p = f.properties;
+      if (p.m !== m || p.tv === "LG" || p.tv === "PQ") return; // los LG ya son aldeas
+      let a = agregado[p.cv];
+      if (!a) {
+        // "VILAR (DO)" → "Rúa Vilar (do)": el aviso urbano dice el tipo de vía
+        const tipo = TIPO_VIA[p.tv] || "";
+        a = agregado[p.cv] = { via: (tipo ? tipo + " " : "") + p.via, n: 0, sx: 0, sy: 0 };
+      }
+      a.n++;
+      a.sx += f.geometry.coordinates[0];
+      a.sy += f.geometry.coordinates[1];
+    });
+    Object.keys(agregado).forEach(function (cv) {
+      const a = agregado[cv];
+      window.VIAS.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [a.sx / a.n, a.sy / a.n] },
+        properties: { n: a.via, p: "", adv: "", c: NOMES_MUNI[m] || "", m: m,
+          cv: cv, np: a.n, dup: 0, ext: MUNIS_NUCLEO.indexOf(m) >= 0 ? 0 : 1,
+          rua: 1 },
+      });
+    });
+  }
 
   const portalPromesas = {};
   function cargarMuni(m) {
@@ -55,7 +100,10 @@
         };
         s.onerror = function () { portalesEstado[m] = "fallo"; resolver(); };
         document.head.appendChild(s);
-      }).then(function () { refrescarEdiciones(); });
+      }).then(function () {
+        if (portalesEstado[m] === "ok") indexarVias(m);
+        refrescarEdiciones();
+      });
     }
     return portalPromesas[m];
   }
@@ -125,6 +173,9 @@
     "15046": "Melide", "15079": "Santiso", "15083": "Toques",
     "27023": "Guntín", "27049": "Portomarín", "27060": "Taboada",
     "36020": "Agolada", "36047": "Rodeiro",
+    "27057": "Sarria", "27062": "Triacastela", "27055": "Samos",
+    "27045": "Pedrafita do Cebreiro", "15006": "Arzúa", "15066": "O Pino",
+    "15078": "Santiago de Compostela",
   };
   const seleccionVecinos = (function () {
     try {
@@ -721,8 +772,12 @@
       }
       if (x.item.tipo === "parroquia") {
         return '<div class="res" data-i="' + i + '"><b>⛪ Parroquia de ' + B.resaltar(p.n, q) +
-          "</b>" + (p.ext == 1 ? ' <span class="tag">veciño</span>' : "") +
+          "</b>" + (p.ext == 1 ? ' <span class="tag">outro concello</span>' : "") +
           '<br><small>' + B.escapar(p.c) + " · " + p.nlugares + " lugares" + dist + "</small></div>";
+      }
+      if (x.item.tipo === "rua") {
+        return '<div class="res" data-i="' + i + '"><b>🛣 ' + B.resaltar(p.n, q) +
+          "</b><br><small>" + B.escapar(p.c) + " · " + p.np + " portales" + dist + "</small></div>";
       }
       if (x.item.tipo === "poi") {
         const g = GRUPOS[p.g] || GRUPOS.outros;
@@ -737,7 +792,7 @@
       }
       const extra = p.f === "osm-extra" ? ' <span class="tag">no oficial</span>' : "";
       const dup = p.dup == 1 ? ' <span class="tag warn">⚠ repetido</span>' : "";
-      const vecino = p.ext == 1 ? ' <span class="tag">veciño</span>' : "";
+      const vecino = p.ext == 1 ? ' <span class="tag">outro concello</span>' : "";
       const portais = p.np > 0 ? " · " + p.np + " portales" : "";
       return '<div class="res" data-i="' + i + '"><b>' + B.resaltar(p.n, q) + "</b>" +
         dup + vecino + extra + "<br><small>" +

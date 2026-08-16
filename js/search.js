@@ -210,6 +210,12 @@
       indice.push(entrada("sanidad", f, f.properties.n, f.properties.dir || "", "", false));
     });
 
+    // vías del callejero (calles urbanas de los concellos cargados)
+    (window.VIAS || []).forEach(function (f) {
+      const p = f.properties;
+      indice.push(entrada("rua", f, p.n, p.c, "", p.ext == 1));
+    });
+
     // alojamientos y negocios (si ya están cargados)
     ((window.NEGOCIOS && window.NEGOCIOS.features) || []).forEach(function (f) {
       const p = f.properties;

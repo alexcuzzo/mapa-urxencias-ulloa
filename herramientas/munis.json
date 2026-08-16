@@ -10,5 +10,12 @@
   {"ine": "15079", "cat": "15080", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "SANTISO", "csv": "SANTISO", "nombre": "Santiso", "rel": 346205, "ext": 1},
   {"ine": "15083", "cat": "15084", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "TOQUES", "csv": "TOQUES", "nombre": "Toques", "rel": 343886, "ext": 1},
   {"ine": "36020", "cat": "36020", "prov": "36", "provNombre": "PONTEVEDRA", "catNombre": "AGOLADA", "csv": "AGOLADA", "nombre": "Agolada", "rel": 346270, "ext": 1},
-  {"ine": "36047", "cat": "36047", "prov": "36", "provNombre": "PONTEVEDRA", "catNombre": "RODEIRO", "csv": "RODEIRO", "nombre": "Rodeiro", "rel": 345981, "ext": 1}
+  {"ine": "36047", "cat": "36047", "prov": "36", "provNombre": "PONTEVEDRA", "catNombre": "RODEIRO", "csv": "RODEIRO", "nombre": "Rodeiro", "rel": 345981, "ext": 1},
+  {"ine": "27057", "cat": "27057", "prov": "27", "provNombre": "LUGO", "catNombre": "SARRIA", "csv": "SARRIA", "nombre": "Sarria", "rel": 345118, "ext": 1},
+  {"ine": "27062", "cat": "27062", "prov": "27", "provNombre": "LUGO", "catNombre": "TRIACASTELA", "csv": "TRIACASTELA", "nombre": "Triacastela", "rel": 341073, "ext": 1},
+  {"ine": "27055", "cat": "27055", "prov": "27", "provNombre": "LUGO", "catNombre": "SAMOS", "csv": "SAMOS", "nombre": "Samos", "rel": 345116, "ext": 1},
+  {"ine": "27045", "cat": "27045", "prov": "27", "provNombre": "LUGO", "catNombre": "PEDRAFITA DO CEBREIRO", "csv": "PEDRAFITA DO CEBREIRO", "nombre": "Pedrafita do Cebreiro", "rel": 340776, "ext": 1},
+  {"ine": "15006", "cat": "15006", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "ARZUA", "csv": "ARZÚA", "nombre": "Arzúa", "rel": 342625, "ext": 1},
+  {"ine": "15066", "cat": "15067", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "O PINO", "csv": "PINO, O", "nombre": "O Pino", "rel": 341663, "ext": 1},
+  {"ine": "15078", "cat": "15079", "prov": "15", "provNombre": "A CORUÑA", "catNombre": "SANTIAGO DE COMPOSTELA", "csv": "SANTIAGO DE COMPOSTELA", "nombre": "Santiago de Compostela", "rel": 346204, "ext": 1}
 ]

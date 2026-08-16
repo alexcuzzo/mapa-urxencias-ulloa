@@ -34,7 +34,8 @@ MUNIS = {m["ine"]: m for m in CONF}
 DISPLAY = {m["ine"]: m["nombre"] for m in CONF}
 EXT = {m["ine"]: m.get("ext", 0) for m in CONF}
 REL_IDS = {m["rel"]: m["ine"] for m in CONF}
-NUCLEOS = ("town", "village", "hamlet", "isolated_dwelling")
+NUCLEOS = ("city", "town", "village", "hamlet", "isolated_dwelling",
+           "suburb", "quarter", "neighbourhood")
 
 
 def quitar_acentos(s):

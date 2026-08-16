@@ -15,5 +15,17 @@
   {"ine": "27060", "lugar": "Susá de Arriba", "parroquia": "Bouzoa", "lon": -7.839778, "lat": 42.690533, "fuente": "Catastro LG SUSA-PQ BOUZOA cv23 + OSM"},
   {"ine": "27060", "lugar": "A Eirexe", "parroquia": "Cerdeda", "lon": -7.830711, "lat": 42.704798, "fuente": "Catastro LG AIREXE-PQ CERCEDA cv55"},
   {"ine": "27060", "lugar": "A Eirexe", "parroquia": "Fradé", "lon": -7.795464, "lat": 42.717263, "fuente": "Catastro LG AIREXE-PQ FRADE cv95"},
-  {"ine": "27060", "lugar": "Susá de Arriba", "parroquia": "Mato", "lon": -7.838851, "lat": 42.689565, "fuente": "Catastro LG SUSA-PQ MATO cv147 + OSM"}
+  {"ine": "27060", "lugar": "Susá de Arriba", "parroquia": "Mato", "lon": -7.838851, "lat": 42.689565, "fuente": "Catastro LG SUSA-PQ MATO cv147 + OSM"},
+  {"ine": "15006", "lugar": "O Laverco", "parroquia": "Arzúa", "lon": -8.169352, "lat": 42.928273, "fuente": "Galipedia + Catastro LABERCO cv16"},
+  {"ine": "15006", "lugar": "San Paio", "parroquia": "Figueiroa", "lon": -8.085509, "lat": 42.924744, "fuente": "CartoCiudad 1200006422 + Galipedia"},
+  {"ine": "27055", "lugar": "A Airexa", "parroquia": "Formigueiros", "lon": -7.357507, "lat": 42.708181, "fuente": "CartoCiudad 1200042007 + Galipedia"},
+  {"ine": "27055", "lugar": "A Pontenova", "parroquia": "Pascais", "lon": -7.347997, "lat": 42.729206, "fuente": "Galipedia + OSM Mesón A Pontenova"},
+  {"ine": "27055", "lugar": "O Fontao", "parroquia": "Samos", "lon": -7.32558, "lat": 42.730635, "fuente": "Catastro CL FONTAO cv153 + Galipedia"},
+  {"ine": "27055", "lugar": "A Torre", "parroquia": "Samos", "lon": -7.32753, "lat": 42.729889, "fuente": "Catastro CL TORRE cv156 + Galipedia"},
+  {"ine": "27055", "lugar": "A Airexe", "parroquia": "Suñide", "lon": -7.369832, "lat": 42.723504, "fuente": "CartoCiudad 1200039834 + Galipedia"},
+  {"ine": "27057", "lugar": "O Lugar de Abaixo", "parroquia": "A Chanca", "lon": -7.438344, "lat": 42.734996, "fuente": "Galipedia (parroquia confirmada por Catastro PQ CHANCA)"},
+  {"ine": "27057", "lugar": "O Lugar de Arriba", "parroquia": "A Chanca", "lon": -7.437129, "lat": 42.737745, "fuente": "Galipedia (parroquia confirmada por Catastro PQ CHANCA)"},
+  {"ine": "27057", "lugar": "O Pinar", "parroquia": "San Sadurniño de Froián", "lon": -7.43213, "lat": 42.712837, "fuente": "Galipedia + NGBE paraxe"},
+  {"ine": "27057", "lugar": "A Agra do Regueiro", "parroquia": "Vilar de Sarria", "lon": -7.397972, "lat": 42.786529, "fuente": "CartoCiudad 1200023171 + Galipedia"},
+  {"ine": "27057", "lugar": "A Cruz de Toleiro", "parroquia": "Vilar de Sarria", "lon": -7.394731, "lat": 42.789823, "fuente": "CartoCiudad 1200040153 + Galipedia"}
 ]
