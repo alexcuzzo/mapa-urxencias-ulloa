@@ -622,6 +622,8 @@
     } else {
       html += '<div class="mini">Sin portales numerados en Catastro para este lugar.</div>';
     }
+    const pac = (window.PAC_POR_CONCELLO || {})[p.m];
+    if (pac) html += '<div class="mini">🚑 Urxencias: <b>' + esc(pac) + "</b></div>";
     html += '<div class="mini">' + lat + ", " + lon + "</div>" + botones(lat, lon) +
       Editor.botonEntidad(p);
     abrirPopup(coords, html);
@@ -1067,23 +1069,51 @@
   })();
 
   const listaSan = document.getElementById("lista-sanidad");
-  window.SANIDAD.features.forEach(function (f) {
-    const p = f.properties;
-    const div = document.createElement("div");
-    div.className = "san-item san-" + p.tipo;
-    div.innerHTML = "<b>" + p.n + "</b><br><small>" + p.dir + "</small><br>" +
-      (p.tel || []).map(function (t) {
-        return '<a class="tel" href="tel:+34' + t.replace(/\s/g, "") + '">☎ ' + t + "</a> ";
-      }).join("");
-    div.addEventListener("click", function (e) {
-      if (e.target.tagName === "A") return;
-      alternarPanel(false);
-      limpiarSeleccion();
-      if (map) map.flyTo({ center: f.geometry.coordinates, zoom: 16 });
-      popupSanidad(p, f.geometry.coordinates);
+  const ORDEN_TIPO = { pac: 0, hospital: 1, cs: 2 };
+  function pintarSanidad() {
+    const c = map ? map.getCenter() : { lat: 42.87, lng: -7.87 };
+    listaSan.innerHTML = "";
+    window.SANIDAD.features.slice()
+      .map(function (f) {
+        const co = f.geometry.coordinates;
+        const dy = (co[1] - c.lat) * 111.32;
+        const dx = (co[0] - c.lng) * 111.32 * Math.cos(c.lat * Math.PI / 180);
+        return { f: f, d: Math.sqrt(dx * dx + dy * dy) };
+      })
+      .sort(function (a, b) {
+        const t = ORDEN_TIPO[a.f.properties.tipo] - ORDEN_TIPO[b.f.properties.tipo];
+        return t || a.d - b.d;   // primero los PAC, luego hospitales y centros
+      })
+      .forEach(function (x) {
+        const p = x.f.properties;
+        const div = document.createElement("div");
+        div.className = "san-item san-" + p.tipo;
+        const dist = x.d < 1 ? Math.round(x.d * 1000) + " m"
+          : x.d.toFixed(x.d < 10 ? 1 : 0).replace(".", ",") + " km";
+        div.innerHTML = "<b>" + esc(p.n) + "</b> <small>· a " + dist + "</small><br><small>" +
+          esc(p.dir) + "</small><br>" +
+          (p.tel || []).map(function (t) {
+            return '<a class="tel" href="tel:+34' + t.replace(/\s/g, "") + '">☎ ' + t + "</a> ";
+          }).join("");
+        div.addEventListener("click", function (e) {
+          if (e.target.tagName === "A") return;
+          alternarPanel(false);
+          limpiarSeleccion();
+          if (map) map.flyTo({ center: x.f.geometry.coordinates, zoom: 16 });
+          popupSanidad(p, x.f.geometry.coordinates);
+        });
+        listaSan.appendChild(div);
+      });
+  }
+  pintarSanidad();
+  if (map) {
+    let tSan = null;
+    map.on("moveend", function () {
+      if (!panel.classList.contains("abierto")) return;
+      clearTimeout(tSan);
+      tSan = setTimeout(pintarSanidad, 350);
     });
-    listaSan.appendChild(div);
-  });
+  }
 
   // ---------- edición colaborativa ----------
   function refrescarEdiciones() {

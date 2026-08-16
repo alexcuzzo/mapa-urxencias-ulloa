@@ -46,7 +46,7 @@ estático (Netlify Drop, GitHub Pages…) — no necesita servidor dinámico.
 | Lugares oficiales + parroquia | Nomenclátor de Galicia (Xunta, CC BY-SA 4.0) | 639 lugares, 99 parroquias — **639/639 localizados** |
 | Coordenadas de aldeas | OpenStreetMap (ODbL) + centroides Catastro | verificado con QA por muestreo (46 aldeas contra fuentes independientes) |
 | Portales numerados + CP | Catastro INSPIRE Addresses + callejero OVC | 4.885 numerados |
-| Sanidad | Sergas (verificado 08/2026) / OSM | 5 recursos; PAC da Ulloa 24h confirmado |
+| Sanidad | Sergas (verificado 08/2026) / OSM | 37 recursos: 10 PAC, 8 hospitales y 19 centros/consultorios |
 
 **Limitación real de la zona**: la mayoría de las direcciones rurales consta
 en Catastro como "S/N": solo está numerado el 44% de las direcciones de aldea
